@@ -24,6 +24,9 @@ My development plan follows a "Core-Out" strategy, scaling from a single-agent s
 * **Deployment**: Moving to **HuggingFace Spaces** with a dedicated **Gradio** or React frontend.
 * **Advanced Feature**: Implementing **MCP (Model Context Protocol)** to allow the bot to provide real-time updates on my latest code commits from GitHub.
 
+### Architecture Overview
+![Full Stack Architecture](Full_Stack_Architecture.png)
+
 ## 🎓 Personal Learning Outcomes
 This project serves as a practical sandbox for mastering advanced AI engineering concepts. My goal is to bridge theoretical computer science from Columbia University with applied agentic development.
 
