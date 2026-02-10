@@ -36,3 +36,6 @@ Put anything about you in **`knowledge/`**: drop `.txt` or `.md` files (resume, 
 - **agent_config.py** – System instructions (including content from `knowledge/`) and `create_agent()`.
 - **knowledge_loader.py** – Reads all `.txt`/`.md` from `knowledge/` for the agent.
 - **azure_utils.py** – Async Azure client and `set_default_openai_api("chat_completions")` for the Agents SDK.
+
+### Architecture Overview
+![Full Stack Architecture](Full_Stack_Architecture.png)
