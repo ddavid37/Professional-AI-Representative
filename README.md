@@ -44,4 +44,6 @@ Put anything about you in **`knowledge/`**: drop `.txt` or `.md` files (resume, 
 - **azure_utils.py** – Async Azure client and `set_default_openai_api("chat_completions")` for the Agents SDK.
 
 ### Architecture Overview
-![Full Stack Architecture](video.mp4)
+![Full Stack Architecture](chat1.png)
+
+![Full Stack Architecture](chat2.png)
