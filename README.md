@@ -44,6 +44,17 @@ Put anything about you in **`knowledge/`**: drop `.txt` or `.md` files (resume, 
 - **azure_utils.py** – Async Azure client and `set_default_openai_api("chat_completions")` for the Agents SDK.
 
 ### Architecture Overview
+<<<<<<< HEAD
 ![Full Stack Architecture](chat1.png)
 
 ![Full Stack Architecture](chat2.png)
+=======
+![Full Stack Architecture](Full_Stack_Architecture.png)
+
+
+
+### The App in Huggingface
+
+[Hugging Face](<img width="1891" height="703" alt="image" src="https://github.com/user-attachments/assets/c5318e51-0e17-4b59-9d47-c2366eb83f08" />
+)
+>>>>>>> ca1ffc78e6863f697cb39bc6a542fcb46c35cac6
