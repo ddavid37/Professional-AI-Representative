@@ -73,7 +73,6 @@ def main():
         fn=chat,
         title="Professional Representative Agent — Daniel David",
         description="Ask about Daniel's background, ML/Federated Learning, or leave a lead. Say **exit** or **quit** to stop.",
-        type="messages",
         examples=[
             "What is Daniel's background?",
             "Tell me about Federated Learning.",
