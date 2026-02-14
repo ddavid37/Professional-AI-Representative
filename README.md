@@ -8,6 +8,13 @@ sdk_version: 6.5.1
 
 Chatbot that acts as Daniel David's professional gatekeeper: represents his public persona, answers from a fixed knowledge base, and captures leads when it cannot answer (e.g. salary, private details) via SendGrid.
 
+### live Chat Example
+![Full Stack Architecture](chat1.png)
+
+
+![Full Stack Architecture](chat2.png)
+
+
 ## Setup
 
 1. **Env**  

@@ -3,8 +3,17 @@
 ## The Mission
 To bridge the gap between static professional profiles (LinkedIn/CVs) and meaningful human connection through an **autonomous agentic gateway**. This project is not just a chatbot; it is a "Digital Alter-Ego" designed to represent my technical persona, protect my focus, and capture high-value opportunities with 24/7 reliability.
 
+### live Chat Example
+![Full Stack Architecture](chat1.png)
+
+
+![Full Stack Architecture](chat2.png)
+
+
 ## The Vision: From MVP to Autonomous System
 My development plan follows a "Core-Out" strategy, scaling from a single-agent script to a production-grade multi-agent ecosystem.
+
+
 
 ### Phase 1: The Intelligent Brain 
 * **Skill Showcase**: Agentic Tool Use & Prompt Engineering.
@@ -45,10 +54,3 @@ This project serves as a practical sandbox for mastering advanced AI engineering
 
 ---
 *Developed as part of the 2026 AI Agentic Workflow Specialization.*
-
-### live Chat Example
-![Full Stack Architecture](chat1.png)
-
-
-![Full Stack Architecture](chat2.png)
-
