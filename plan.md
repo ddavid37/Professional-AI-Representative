@@ -45,3 +45,10 @@ This project serves as a practical sandbox for mastering advanced AI engineering
 
 ---
 *Developed as part of the 2026 AI Agentic Workflow Specialization.*
+
+### live Chat Example
+![Full Stack Architecture](chat1.png)
+
+
+![Full Stack Architecture](chat2.png)
+
