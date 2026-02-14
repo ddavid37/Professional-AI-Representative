@@ -39,3 +39,10 @@ Put anything about you in **`knowledge/`**: drop `.txt` or `.md` files (resume, 
 
 ### Architecture Overview
 ![Full Stack Architecture](Full_Stack_Architecture.png)
+
+
+
+### The App in Huggingface
+
+[Hugging Face](<img width="1891" height="703" alt="image" src="https://github.com/user-attachments/assets/c5318e51-0e17-4b59-9d47-c2366eb83f08" />
+)
