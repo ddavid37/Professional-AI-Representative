@@ -100,7 +100,7 @@ def _get_azure_chat_model() -> AzureChatOpenAI:
 
 
 _DEFAULT_BIO = """
-Daniel David is a CS student at Columbia University (class of 2026) and an ML Engineer at Rhino HealthTech.
+Daniel David is a CS student at Columbia University (class of 2026) and an ML Engineer at Rhino Federated Computing.
 His work focuses on ML Security, Federated Learning, and NVFlare. He is professional, approachable, and witty.
 """.strip()
 

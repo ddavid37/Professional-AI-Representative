@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -26,63 +27,79 @@ export default function HomePage() {
     <div className="mx-auto max-w-6xl px-6 py-20">
 
       {/* ── Hero ───────────────────────────────────────────────── */}
-      <section className="mb-28 flex flex-col items-start gap-6">
-        <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs text-text-secondary">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-          Available · Graduating May 2026
-        </span>
+      <section className="mb-28 flex flex-col-reverse items-start gap-10 md:flex-row md:items-center md:justify-between">
+        {/* Left: text */}
+        <div className="flex flex-col gap-6">
+          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs text-text-secondary">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+            Available · Graduating May 2026
+          </span>
 
-        <h1 className="text-5xl font-bold leading-tight tracking-tight md:text-6xl">
-          Hi, I'm{" "}
-          <span className="text-accent glow-accent">Daniel David</span>
-        </h1>
+          <h1 className="text-5xl font-bold leading-tight tracking-tight md:text-6xl">
+            Hi, I'm{" "}
+            <span className="text-accent glow-accent">Daniel David</span>
+          </h1>
 
-        <p className="max-w-2xl text-lg text-text-secondary leading-relaxed">
-          ML Engineer at{" "}
-          <span className="text-text-primary font-medium">Rhino HealthTech</span>{" "}
-          and CS student at{" "}
-          <span className="text-text-primary font-medium">Columbia University</span>{" "}
-          (Class of&nbsp;May&nbsp;2026). I build privacy-preserving AI systems,
-          agentic workflows, and production-grade ML pipelines.
-        </p>
+          <p className="max-w-xl text-lg text-text-secondary leading-relaxed">
+            ML Engineer at{" "}
+            <span className="text-text-primary font-medium">Rhino Federated Computing</span>{" "}
+            and CS student at{" "}
+            <span className="text-text-primary font-medium">Columbia University</span>{" "}
+            (Class of&nbsp;May&nbsp;2026). I build privacy-preserving AI systems,
+            agentic workflows, and production-grade ML pipelines.
+          </p>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/chat"
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-background transition-opacity hover:opacity-90"
-          >
-            <MessageSquare size={15} />
-            Chat with my AI Rep
-          </Link>
-          <Link
-            href="/contact"
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm text-text-secondary transition-colors hover:border-accent hover:text-accent"
-          >
-            Get in touch
-            <ArrowRight size={14} />
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/chat"
+              className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+            >
+              <MessageSquare size={15} />
+              Chat with my AI Rep
+            </Link>
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm text-text-secondary transition-colors hover:border-accent hover:text-accent"
+            >
+              Get in touch
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          {/* Social links */}
+          <div className="flex items-center gap-4 pt-2">
+            <a
+              href="https://github.com/DanielDavidXD"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-text-muted hover:text-text-primary transition-colors"
+              aria-label="GitHub"
+            >
+              <Github size={18} />
+            </a>
+            <a
+              href="https://linkedin.com/in/daniel-david-xyz"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-text-muted hover:text-text-primary transition-colors"
+              aria-label="LinkedIn"
+            >
+              <Linkedin size={18} />
+            </a>
+          </div>
         </div>
 
-        {/* Social links */}
-        <div className="flex items-center gap-4 pt-2">
-          <a
-            href="https://github.com/DanielDavidXD"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="text-text-muted hover:text-text-primary transition-colors"
-            aria-label="GitHub"
-          >
-            <Github size={18} />
-          </a>
-          <a
-            href="https://linkedin.com/in/daniel-david-xyz"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="text-text-muted hover:text-text-primary transition-colors"
-            aria-label="LinkedIn"
-          >
-            <Linkedin size={18} />
-          </a>
+        {/* Right: photo */}
+        <div className="shrink-0">
+          <div className="relative h-52 w-52 md:h-64 md:w-64 overflow-hidden rounded-2xl border border-border shadow-lg shadow-accent/10">
+            <Image
+              src="/DanielProfessionalPicture.png"
+              alt="Daniel David"
+              fill
+              className="object-cover object-top"
+              priority
+            />
+          </div>
         </div>
       </section>
 

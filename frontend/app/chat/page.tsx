@@ -126,6 +126,14 @@ export default function ChatPage() {
                     : m
                 )
               );
+            } else if (payload.type === "error") {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId
+                    ? { ...m, content: `⚠️ Error: ${payload.message}` }
+                    : m
+                )
+              );
             }
           } catch {
             // Ignore malformed SSE frames

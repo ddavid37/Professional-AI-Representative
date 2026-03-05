@@ -86,17 +86,23 @@ async def _sse_event_stream(initial_state: AgentState) -> AsyncGenerator[str, No
     Stream LangGraph events as Server-Sent Events (SSE).
 
     We focus on `on_chat_model_stream` events to emit token deltas.
+    Errors are caught and forwarded as {"type": "error"} events so the
+    frontend can display them instead of silently showing an empty bubble.
     """
-    async for event in GRAPH.astream_events(initial_state, version="v2"):
-        if event.get("event") == "on_chat_model_stream":
-            chunk = event.get("data", {}).get("chunk")
-            if not chunk:
-                continue
-            delta = chunk.content
-            if not delta:
-                continue
-            payload = {"type": "token", "delta": delta}
-            yield f"data: {json.dumps(payload)}\n\n"
+    try:
+        async for event in GRAPH.astream_events(initial_state, version="v2"):
+            if event.get("event") == "on_chat_model_stream":
+                chunk = event.get("data", {}).get("chunk")
+                if not chunk:
+                    continue
+                delta = chunk.content
+                if not delta:
+                    continue
+                payload = {"type": "token", "delta": delta}
+                yield f"data: {json.dumps(payload)}\n\n"
+    except Exception as exc:
+        error_payload = {"type": "error", "message": str(exc)}
+        yield f"data: {json.dumps(error_payload)}\n\n"
 
     # Signal completion to the client
     yield f"data: {json.dumps({'type': 'done'})}\n\n"
