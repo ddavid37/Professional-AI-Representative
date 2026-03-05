@@ -178,7 +178,7 @@ export default function ChatPage() {
         </div>
         <div>
           <p className="text-sm font-semibold text-text-primary">Daniel's AI Rep</p>
-          <p className="text-xs text-text-secondary">Powered by GPT-4o-mini · Azure OpenAI</p>
+          <p className="text-xs text-text-secondary">Powered by GPT-4o-mini · OpenAI</p>
         </div>
         <span className="ml-auto flex items-center gap-1.5 text-xs text-accent">
           <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
