@@ -3,7 +3,7 @@ LangGraph-based agent core for the Professional AI Representative.
 
 This module:
 - Defines the typed AgentState with LangGraph reducers.
-- Wires Azure OpenAI (Foundry) as the chat model using .env credentials.
+- Wires standard OpenAI (gpt-4o-mini) as the chat model via OPENAI_API_KEY.
 - Injects persona + knowledge from the existing knowledge_loader.
 - Enforces an "I don't know" protocol that asks for contact info instead of hallucinating.
 """
@@ -16,7 +16,7 @@ from typing import Any, Dict, List, TypedDict
 from typing_extensions import Annotated
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
-from langchain_openai import AzureChatOpenAI
+from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
@@ -36,7 +36,6 @@ def _append_leads(
         existing = []
     if not new:
         new = []
-    # Simple "append" semantics: keep all historical leads.
     return [*existing, *new]
 
 
@@ -53,49 +52,31 @@ class AgentState(TypedDict):
     leads: Annotated[List[Dict[str, Any]], _append_leads]
 
 
-_MODEL: AzureChatOpenAI | None = None
+_MODEL: ChatOpenAI | None = None
 
 
-def _get_azure_chat_model() -> AzureChatOpenAI:
+def _get_chat_model() -> ChatOpenAI:
     """
-    Construct (or reuse) an AzureChatOpenAI model using Foundry-style env vars.
+    Construct (or reuse) a ChatOpenAI model using the standard OpenAI API.
 
-    Expected env vars (already documented in README):
-      - AZURE_OPENAI_API_KEY
-      - AZURE_OPENAI_ENDPOINT          e.g. https://<resource>.services.ai.azure.com
-      - AZURE_OPENAI_API_VERSION       e.g. 2024-10-21
-      - AZURE_OPENAI_DEPLOYMENT_NAME   e.g. gpt-4o-mini
+    Required env var:
+      - OPENAI_API_KEY
+
+    Optional env var (defaults to gpt-4o-mini):
+      - OPENAI_MODEL   e.g. gpt-4o, gpt-4o-mini
     """
     global _MODEL
     if _MODEL is not None:
         return _MODEL
 
-    api_key = os.getenv("AZURE_OPENAI_API_KEY")
-    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-    api_version = os.getenv("AZURE_OPENAI_API_VERSION")
-    deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
-
-    missing = [name for name, value in [
-        ("AZURE_OPENAI_API_KEY", api_key),
-        ("AZURE_OPENAI_ENDPOINT", endpoint),
-        ("AZURE_OPENAI_API_VERSION", api_version),
-        ("AZURE_OPENAI_DEPLOYMENT_NAME", deployment),
-    ] if not value]
-    if missing:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
         raise ValueError(
-            "Missing Azure OpenAI configuration for LangGraph agent. "
-            f"Set in .env: {', '.join(missing)}"
+            "Missing OPENAI_API_KEY. Set it in .env or as a Railway environment variable."
         )
 
-    # Normalize endpoint (Foundry uses *.services.ai.azure.com)
-    endpoint = endpoint.rstrip("/")
-
-    _MODEL = AzureChatOpenAI(
-        api_key=api_key,
-        azure_endpoint=endpoint,
-        api_version=api_version,
-        azure_deployment=deployment,
-    )
+    model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    _MODEL = ChatOpenAI(api_key=api_key, model=model_name)
     return _MODEL
 
 
@@ -156,10 +137,10 @@ def agent_node(state: AgentState) -> Dict[str, Any]:
     """
     Single-node "brain" for now:
     - Injects system prompt if missing.
-    - Sends the message history to Azure OpenAI.
+    - Sends the message history to OpenAI.
     - Appends the assistant reply to `messages`.
     """
-    model = _get_azure_chat_model()
+    model = _get_chat_model()
     messages = _ensure_system_message(state["messages"])
     response: AIMessage = model.invoke(messages)
     return {"messages": [response]}
