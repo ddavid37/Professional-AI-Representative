@@ -68,7 +68,7 @@ export default function HomePage() {
           <a
             href="https://github.com/DanielDavidXD"
             target="_blank"
-            rel="noreferrer"
+            rel="noreferrer noopener"
             className="text-text-muted hover:text-text-primary transition-colors"
             aria-label="GitHub"
           >
@@ -77,7 +77,7 @@ export default function HomePage() {
           <a
             href="https://linkedin.com/in/daniel-david-xyz"
             target="_blank"
-            rel="noreferrer"
+            rel="noreferrer noopener"
             className="text-text-muted hover:text-text-primary transition-colors"
             aria-label="LinkedIn"
           >
