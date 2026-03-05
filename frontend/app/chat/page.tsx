@@ -218,8 +218,7 @@ export default function ChatPage() {
           placeholder="Ask about Daniel's background, projects, or skills…"
           rows={1}
           disabled={loading}
-          className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-text-primary placeholder:text-text-muted outline-none disabled:opacity-50"
-          style={{ maxHeight: "120px" }}
+          className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-text-primary placeholder:text-text-muted outline-none disabled:opacity-50 max-h-[120px]"
         />
         <button
           type="submit"
