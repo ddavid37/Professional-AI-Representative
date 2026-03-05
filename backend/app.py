@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel
 
-from .agent import GRAPH, AgentState, initial_state_from_user_message
+from .agent import GRAPH, AgentState, initial_state_from_user_message  # noqa: E402
 
 
 # ----- Environment bootstrap -----

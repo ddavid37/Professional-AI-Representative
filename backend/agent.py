@@ -17,7 +17,7 @@ from typing_extensions import Annotated
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
 from langchain_openai import AzureChatOpenAI
-from langgraph.graph import END, START, CompiledGraph, StateGraph
+from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
 from knowledge_loader import KNOWLEDGE_DIR_NAME, get_project_dir, load_knowledge_dir
@@ -165,7 +165,7 @@ def agent_node(state: AgentState) -> Dict[str, Any]:
     return {"messages": [response]}
 
 
-def build_agent_graph() -> CompiledGraph:
+def build_agent_graph():
     """
     Construct the LangGraph workflow for this agent.
 
@@ -183,7 +183,7 @@ def build_agent_graph() -> CompiledGraph:
 
 
 # Pre-compiled graph for reuse by the FastAPI app.
-GRAPH: CompiledGraph = build_agent_graph()
+GRAPH = build_agent_graph()
 
 
 def initial_state_from_user_message(content: str) -> AgentState:
