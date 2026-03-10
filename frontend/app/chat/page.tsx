@@ -64,11 +64,46 @@ export default function ChatPage() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [onlineStatus, setOnlineStatus] = useState<"checking" | "online" | "offline">(
+    "checking",
+  );
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Keep the "Online" indicator honest by checking both browser connectivity
+  // and the backend /healthz endpoint.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkHealth() {
+      try {
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          if (!cancelled) setOnlineStatus("offline");
+          return;
+        }
+
+        const res = await fetch(`${API_BASE}/healthz`, {
+          method: "GET",
+          cache: "no-store",
+        });
+        if (!cancelled) {
+          setOnlineStatus(res.ok ? "online" : "offline");
+        }
+      } catch {
+        if (!cancelled) setOnlineStatus("offline");
+      }
+    }
+
+    checkHealth();
+    const id = setInterval(checkHealth, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
 
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return;
@@ -98,6 +133,10 @@ export default function ChatPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // `message` keeps compatibility with older backends that only
+          // accept a single-turn payload.
+          message: text.trim(),
+          // `messages` gives newer backends full conversation context.
           messages: historyForBackend.map((m) => ({
             role: m.role,
             content: m.content,
@@ -190,9 +229,29 @@ export default function ChatPage() {
           <p className="text-sm font-semibold text-text-primary">Daniel's AI Rep</p>
           <p className="text-xs text-text-secondary">Powered by GPT-4o-mini · OpenAI</p>
         </div>
-        <span className="ml-auto flex items-center gap-1.5 text-xs text-accent">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-          Online
+        <span
+          className={`ml-auto flex items-center gap-1.5 text-xs ${
+            onlineStatus === "online"
+              ? "text-accent"
+              : onlineStatus === "offline"
+              ? "text-red-400"
+              : "text-text-secondary"
+          }`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              onlineStatus === "online"
+                ? "bg-accent animate-pulse"
+                : onlineStatus === "offline"
+                ? "bg-red-500"
+                : "bg-text-muted"
+            }`}
+          />
+          {onlineStatus === "checking"
+            ? "Checking connection…"
+            : onlineStatus === "online"
+            ? "Online"
+            : "Offline"}
         </span>
       </div>
 
