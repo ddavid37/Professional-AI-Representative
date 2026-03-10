@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, AsyncGenerator, Dict, List
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -21,7 +21,12 @@ from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel
 
-from .agent import GRAPH, AgentState, initial_state_from_user_message  # noqa: E402
+from .agent import (
+    GRAPH,
+    AgentState,
+    initial_state_from_user_message,
+    state_from_chat_history,
+)  # noqa: E402
 
 
 # ----- Environment bootstrap -----
@@ -41,10 +46,24 @@ app.add_middleware(
 )
 
 
-class ChatRequest(BaseModel):
-    """Request body for chat endpoints."""
+class ChatMessage(BaseModel):
+    """Single message in a chat history passed from the frontend."""
 
-    message: str
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    """
+    Request body for chat endpoints.
+
+    For backward compatibility:
+      - Either `message` (single-turn) OR `messages` (multi-turn history) may be provided.
+      - If both are provided, `messages` wins.
+    """
+
+    message: str | None = None
+    messages: List[ChatMessage] | None = None
     user_id: str | None = None
 
 
@@ -67,8 +86,20 @@ async def chat(request: ChatRequest) -> ChatResponse:
     Non-streaming chat endpoint.
 
     Useful for quick testing or environments where SSE is inconvenient.
+
+    If `messages` is provided, we treat it as the full chat history (including
+    the latest user turn). Otherwise we fall back to a single-turn `message`.
     """
-    state: AgentState = initial_state_from_user_message(request.message)
+    if request.messages:
+        history_payload = [m.model_dump() for m in request.messages]
+        state: AgentState = state_from_chat_history(history_payload)
+    elif request.message:
+        state = initial_state_from_user_message(request.message)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Either `message` or `messages` must be provided.",
+        )
     final_state: AgentState = GRAPH.invoke(state)
 
     ai_messages = [m for m in final_state["messages"] if isinstance(m, AIMessage)]
@@ -117,8 +148,20 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
       - URL: POST /api/chat/stream
       - Response: text/event-stream
       - Events: {"type": "token", "delta": "..."} and a final {"type": "done"}.
+
+    If `messages` is provided, we treat it as the full chat history (including
+    the latest user turn). Otherwise we fall back to a single-turn `message`.
     """
-    state: AgentState = initial_state_from_user_message(request.message)
+    if request.messages:
+        history_payload = [m.model_dump() for m in request.messages]
+        state: AgentState = state_from_chat_history(history_payload)
+    elif request.message:
+        state = initial_state_from_user_message(request.message)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Either `message` or `messages` must be provided.",
+        )
     return StreamingResponse(
         _sse_event_stream(state),
         media_type="text/event-stream",

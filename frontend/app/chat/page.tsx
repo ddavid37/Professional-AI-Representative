@@ -80,11 +80,16 @@ export default function ChatPage() {
     };
     const assistantMsgId = crypto.randomUUID();
 
-    setMessages((prev) => [
-      ...prev,
-      userMsg,
-      { id: assistantMsgId, role: "assistant", content: "", streaming: true },
-    ]);
+    let historyForBackend: Message[] = [];
+
+    setMessages((prev) => {
+      historyForBackend = [...prev, userMsg];
+      return [
+        ...prev,
+        userMsg,
+        { id: assistantMsgId, role: "assistant", content: "", streaming: true },
+      ];
+    });
     setInput("");
     setLoading(true);
 
@@ -92,7 +97,12 @@ export default function ChatPage() {
       const res = await fetch(`${API_BASE}/api/chat/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text.trim() }),
+        body: JSON.stringify({
+          messages: historyForBackend.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+        }),
       });
 
       if (!res.ok || !res.body) {

@@ -176,3 +176,35 @@ def initial_state_from_user_message(content: str) -> AgentState:
         "leads": [],
     }
 
+
+def state_from_chat_history(history: List[Dict[str, Any]]) -> AgentState:
+    """
+    Build an AgentState from a list of chat-like message dicts.
+
+    Expected shape for each entry in `history`:
+      {"role": "user" | "assistant", "content": "<text>"}
+
+    System messages are injected later by `_ensure_system_message` in `agent_node`,
+    so we only need to translate user and assistant roles here.
+    """
+    messages: List[AnyMessage] = []
+    for item in history:
+        role = item.get("role")
+        content = item.get("content", "")
+        if not content:
+            continue
+        if role == "user":
+            messages.append(HumanMessage(content=content))
+        elif role == "assistant":
+            messages.append(AIMessage(content=content))
+
+    # Fallback: if history was empty or filtered out, keep the API contract
+    # by returning an empty conversation with no leads.
+    if not messages:
+        return {"messages": [], "leads": []}
+
+    return {
+        "messages": messages,
+        "leads": [],
+    }
+
