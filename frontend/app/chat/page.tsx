@@ -73,6 +73,33 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Hydrate chat history from localStorage so short-term memory survives reloads.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem("daniel_ai_chat_history");
+      if (stored) {
+        const parsed = JSON.parse(stored) as Message[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+        }
+      }
+    } catch {
+      // If parsing fails, fall back to the default welcome message.
+    }
+  }, []);
+
+  // Persist chat history on every change (excluding transient streaming flags).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const toStore = messages.map(({ streaming, ...rest }) => rest);
+      window.localStorage.setItem("daniel_ai_chat_history", JSON.stringify(toStore));
+    } catch {
+      // Ignore storage errors (e.g., private mode / quota issues).
+    }
+  }, [messages]);
+
   // Keep the "Online" indicator honest by checking both browser connectivity
   // and the backend /healthz endpoint.
   useEffect(() => {

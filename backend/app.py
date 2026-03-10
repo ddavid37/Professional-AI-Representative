@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, List
+from typing import Any, AsyncGenerator, Dict, List, Optional
+
+import re
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -32,6 +35,12 @@ from .agent import (
 # ----- Environment bootstrap -----
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(PROJECT_ROOT / ".env", override=True)
+
+
+# ----- Leads file (simple text log) -----
+LEADS_DIR = PROJECT_ROOT / "leads"
+LEADS_FILE = LEADS_DIR / "leads.txt"
+EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
 
 # ----- FastAPI app -----
@@ -74,6 +83,61 @@ class ChatResponse(BaseModel):
     leads: list[Dict[str, Any]] = []
 
 
+def _ensure_leads_dir() -> None:
+    """Create the leads directory if it does not exist."""
+    LEADS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _maybe_extract_lead_from_request(request: ChatRequest) -> Optional[str]:
+    """
+    Heuristically extract a lead line (name + email) from the latest
+    user-facing message in the request, if any.
+
+    We intentionally keep this simple:
+      - Look at the last `role == "user"` message (from `messages` if present,
+        otherwise from `message`).
+      - If it contains an email address, treat that as the lead's email.
+      - Use the first non-empty line as a "name" guess.
+    """
+
+    content: Optional[str] = None
+
+    if request.messages:
+        # Find the last user message in the history.
+        for m in reversed(request.messages):
+            if m.role == "user" and m.content:
+                content = m.content
+                break
+    elif request.message:
+        content = request.message
+
+    if not content:
+        return None
+
+    email_match = EMAIL_RE.search(content)
+    if not email_match:
+        return None
+
+    email = email_match.group(0)
+    # Use the first non-empty line as a crude "name" field.
+    name = ""
+    for line in content.splitlines():
+        stripped = line.strip()
+        if stripped and email not in stripped:
+            name = stripped
+            break
+
+    timestamp = datetime.now(timezone.utc).isoformat()
+    return f"{timestamp} | name={name or 'unknown'} | email={email}"
+
+
+def _append_lead_line(line: str) -> None:
+    """Append a single lead line to leads/leads.txt."""
+    _ensure_leads_dir()
+    with LEADS_FILE.open("a", encoding="utf-8") as f:
+        f.write(line.rstrip() + "\n")
+
+
 @app.get("/healthz", tags=["meta"])
 async def healthz() -> Dict[str, str]:
     """Simple health check for HF Spaces / uptime monitors."""
@@ -100,6 +164,14 @@ async def chat(request: ChatRequest) -> ChatResponse:
             status_code=400,
             detail="Either `message` or `messages` must be provided.",
         )
+
+    # Best-effort lead capture; failures here should not break chat.
+    try:
+        lead_line = _maybe_extract_lead_from_request(request)
+        if lead_line:
+            _append_lead_line(lead_line)
+    except Exception:
+        pass
     final_state: AgentState = GRAPH.invoke(state)
 
     ai_messages = [m for m in final_state["messages"] if isinstance(m, AIMessage)]
@@ -162,6 +234,14 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             status_code=400,
             detail="Either `message` or `messages` must be provided.",
         )
+
+    # Best-effort lead capture when the user shares contact details.
+    try:
+        lead_line = _maybe_extract_lead_from_request(request)
+        if lead_line:
+            _append_lead_line(lead_line)
+    except Exception:
+        pass
     return StreamingResponse(
         _sse_event_stream(state),
         media_type="text/event-stream",
