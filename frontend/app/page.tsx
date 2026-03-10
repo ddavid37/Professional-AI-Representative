@@ -69,7 +69,7 @@ export default function HomePage() {
           {/* Social links */}
           <div className="flex items-center gap-4 pt-2">
             <a
-              href="https://github.com/DanielDavidXD"
+              href="http://github.com/ddavid37"
               target="_blank"
               rel="noreferrer noopener"
               className="text-text-muted hover:text-text-primary transition-colors"
@@ -78,7 +78,7 @@ export default function HomePage() {
               <Github size={18} />
             </a>
             <a
-              href="https://linkedin.com/in/daniel-david-xyz"
+              href="https://www.linkedin.com/in/ddavid37"
               target="_blank"
               rel="noreferrer noopener"
               className="text-text-muted hover:text-text-primary transition-colors"
