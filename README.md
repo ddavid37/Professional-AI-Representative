@@ -40,14 +40,14 @@ Chatbot that acts as Daniel David's professional gatekeeper: represents his publ
 
 ## Knowledge directory
 
-Put anything about you in **`knowledge/`**: drop `.txt` or `.md` files (resume, bio, FAQs). The agent loads them at startup and uses that context to answer. It does not use `knowledge/README.md` (that file is only for instructions).
+Put anything about you in **`knowledge/`**: drop `.txt`, `.md`, or `.pdf` files (resume, bio, FAQs). The agent loads them at startup and uses that context to answer. It does not use `knowledge/README.md` (that file is only for instructions).
 
 ## Structure
 
 - **main.py** – Entry point; wires Azure, loads `knowledge/`, runs the chat loop. Handles connection errors with a clear message.
 - **tools.py** – `LeadCapture` (Pydantic), `send_html_email` (SendGrid), `lead_capture` (@function_tool).
 - **agent_config.py** – System instructions (including content from `knowledge/`) and `create_agent()`.
-- **knowledge_loader.py** – Reads all `.txt`/`.md` from `knowledge/` for the agent.
+- **knowledge_loader.py** – Reads all `.txt`/`.md`/`.pdf` from `knowledge/` for the agent.
 - **azure_utils.py** – Async Azure client and `set_default_openai_api("chat_completions")` for the Agents SDK.
 
 ### Architecture Overview
