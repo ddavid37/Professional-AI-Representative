@@ -7,7 +7,7 @@ export async function GET() {
     process.cwd(),
     "..",
     "knowledge",
-    "Daniel_David_Resume_March_26.pdf",
+    "Daniel_David_Resume_April_26_.pdf",
   );
 
   const fileBuffer = await fs.promises.readFile(pdfPath);
