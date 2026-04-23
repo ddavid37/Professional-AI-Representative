@@ -19,7 +19,8 @@ ALL_EXTENSIONS = TEXT_EXTENSIONS | PDF_EXTENSIONS
 
 def get_project_dir() -> Path:
     """Project root (directory containing main.py)."""
-    return Path(__file__).resolve().parent
+    # knowledge_loader.py lives in <project>/custom/, so project root is one level up.
+    return Path(__file__).resolve().parent.parent
 
 
 def _read_pdf(path: Path) -> str:

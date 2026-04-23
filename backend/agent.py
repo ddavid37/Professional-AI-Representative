@@ -20,7 +20,11 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
-from knowledge_loader import KNOWLEDGE_DIR_NAME, get_project_dir, load_knowledge_dir
+from custom.knowledge_loader import (
+    KNOWLEDGE_DIR_NAME,
+    get_project_dir,
+    load_knowledge_dir,
+)
 
 
 def _append_leads(
