@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Bot, Send, User } from "lucide-react";
+import { Bot, MessageSquarePlus, Send, User } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -53,15 +53,15 @@ const STARTER_PROMPTS = [
   "What is Daniel graduating with?",
 ];
 
+const WELCOME_MESSAGE: Message = {
+  id: "welcome",
+  role: "assistant",
+  content:
+    "Hi! I'm Daniel's AI representative. Ask me about his background, projects, skills, or graduation plans. If I can't answer something, I'll make sure Daniel follows up with you.",
+};
+
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Hi! I'm Daniel's AI representative. Ask me about his background, projects, skills, or graduation plans. If I can't answer something, I'll make sure Daniel follows up with you.",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [onlineStatus, setOnlineStatus] = useState<"checking" | "online" | "offline">(
@@ -244,6 +244,19 @@ export default function ChatPage() {
     sendMessage(input);
   }
 
+  function startNewChat() {
+    if (loading) return;
+    try {
+      window.localStorage.removeItem("daniel_ai_chat_history");
+    } catch {
+      // Ignore storage errors.
+    }
+    setMessages([WELCOME_MESSAGE]);
+    setInput("");
+  }
+
+  const hasUserMessages = messages.some((m) => m.role === "user");
+
   return (
     <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-3xl flex-col px-4 py-6">
 
@@ -256,30 +269,43 @@ export default function ChatPage() {
           <p className="text-sm font-semibold text-text-primary">Daniel's AI Rep</p>
           <p className="text-xs text-text-secondary">Powered by GPT-4o-mini · OpenAI</p>
         </div>
-        <span
-          className={`ml-auto flex items-center gap-1.5 text-xs ${
-            onlineStatus === "online"
-              ? "text-accent"
-              : onlineStatus === "offline"
-              ? "text-red-400"
-              : "text-text-secondary"
-          }`}
-        >
+        <div className="ml-auto flex items-center gap-3">
+          {hasUserMessages && (
+            <button
+              type="button"
+              onClick={startNewChat}
+              disabled={loading}
+              className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:border-accent/40 hover:text-text-primary disabled:opacity-40"
+            >
+              <MessageSquarePlus size={13} />
+              New chat
+            </button>
+          )}
           <span
-            className={`h-1.5 w-1.5 rounded-full ${
+            className={`flex items-center gap-1.5 text-xs ${
               onlineStatus === "online"
-                ? "bg-accent animate-pulse"
+                ? "text-accent"
                 : onlineStatus === "offline"
-                ? "bg-red-500"
-                : "bg-text-muted"
+                ? "text-red-400"
+                : "text-text-secondary"
             }`}
-          />
-          {onlineStatus === "checking"
-            ? "Checking connection…"
-            : onlineStatus === "online"
-            ? "Online"
-            : "Offline"}
-        </span>
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                onlineStatus === "online"
+                  ? "bg-accent animate-pulse"
+                  : onlineStatus === "offline"
+                  ? "bg-red-500"
+                  : "bg-text-muted"
+              }`}
+            />
+            {onlineStatus === "checking"
+              ? "Checking connection…"
+              : onlineStatus === "online"
+              ? "Online"
+              : "Offline"}
+          </span>
+        </div>
       </div>
 
       {/* Messages */}

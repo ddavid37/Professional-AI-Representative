@@ -3,9 +3,9 @@ import fs from "fs";
 import path from "path";
 
 export async function GET() {
-  const resumeFileName = "Daniel_David_Resume_April_26_.pdf";
+  const resumeFileName = "Daniel_David_CV_May_2026_Har.pdf";
   const fallbackUrl =
-    "https://raw.githubusercontent.com/ddavid37/Professional-AI-Representative/main/knowledge/Daniel_David_Resume_April_26_.pdf";
+    "https://raw.githubusercontent.com/ddavid37/Professional-AI-Representative/main/knowledge/Daniel_David_CV_May_2026_Har.pdf";
 
   const candidates = [
     path.join(process.cwd(), "..", "knowledge", resumeFileName),
