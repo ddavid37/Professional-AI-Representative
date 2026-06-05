@@ -50,4 +50,4 @@ Put anything about you in **`knowledge/`**: drop `.txt`, `.md`, or `.pdf` files 
 - **knowledge_loader.py** – Reads all `.txt`/`.md`/`.pdf` from `knowledge/` for the agent.
 - **azure_utils.py** – Async Azure client and `set_default_openai_api("chat_completions")` for the Agents SDK.
 
-### Architecture Overview
+### Architecture Overview 
