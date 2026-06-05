@@ -20,6 +20,93 @@ Daniel David's professional AI gatekeeper — a Next.js portfolio site with a La
 | Lead alerts | Twilio WhatsApp |
 | Knowledge | `knowledge/` — `.txt`, `.md`, `.pdf` loaded at startup |
 
+## Architecture
+
+### System overview
+
+```mermaid
+flowchart TB
+    subgraph User["Visitor"]
+        Browser["Browser"]
+    end
+
+    subgraph VercelFE["Vercel — Frontend Project"]
+        NextJS["Next.js 16 + React 19"]
+        Pages["Pages: Home · Chat · Resume · Contact"]
+        ResumeAPI["Route: /api/resume"]
+        LS["localStorage<br/>daniel_ai_chat_history"]
+        Tailwind["Tailwind CSS + Lucide Icons"]
+        Fonts["DM Sans + Instrument Serif"]
+    end
+
+    subgraph VercelAPI["Vercel — API Project"]
+        FastAPI["FastAPI + Uvicorn"]
+        Routes["/healthz · /api/chat · /api/chat/stream"]
+        Handoff["_maybe_whatsapp_reply<br/>(deterministic handoff)"]
+        Agent["LangGraph ReAct Agent"]
+        Tool["Tool: notify_daniel_on_whatsapp"]
+        Loader["knowledge_loader + PyPDF"]
+    end
+
+    subgraph External["External Services"]
+        OpenAI["OpenAI API<br/>gpt-4o-mini"]
+        Twilio["Twilio WhatsApp"]
+        Daniel["Daniel's phone"]
+    end
+
+    subgraph Data["Knowledge (repo)"]
+        Knowledge["knowledge/<br/>CV · bio · portfolio · FAQs"]
+    end
+
+    Browser --> NextJS
+    NextJS --> Pages
+    NextJS --> ResumeAPI
+    Pages --> LS
+    Pages -->|"SSE stream POST /api/chat/stream"| FastAPI
+    ResumeAPI --> Knowledge
+
+    FastAPI --> Routes
+    Routes --> Handoff
+    Handoff -->|"name + email + prior question"| Twilio
+    Routes --> Agent
+    Agent --> OpenAI
+    Agent --> Tool
+    Tool --> Twilio
+    Loader --> Knowledge
+    Agent --> Loader
+    Twilio --> Daniel
+```
+
+### Chat request flow
+
+```mermaid
+sequenceDiagram
+    participant U as Visitor
+    participant FE as Next.js Frontend
+    participant BE as FastAPI Backend
+    participant LG as LangGraph Agent
+    participant OAI as OpenAI
+    participant WA as Twilio WhatsApp
+    participant D as Daniel
+
+    U->>FE: Ask question
+    FE->>BE: POST /api/chat/stream + full messages[]
+    BE->>BE: Has email + earlier question?
+    alt Deterministic handoff
+        BE->>WA: send_lead_notification()
+        WA->>D: WhatsApp message
+        BE->>FE: SSE confirmation
+    else Normal chat
+        BE->>LG: ainvoke(state)
+        LG->>OAI: LLM + optional tool call
+        OAI-->>LG: response
+        LG->>WA: notify_daniel_on_whatsapp (if needed)
+        LG-->>BE: final reply
+        BE->>FE: SSE final text
+    end
+    FE->>U: Display reply
+```
+
 ## Quick start (local)
 
 See **[DEVELOPER_INSTRUCTIONS.md](DEVELOPER_INSTRUCTIONS.md)** for the full guide.
