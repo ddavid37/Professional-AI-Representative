@@ -57,7 +57,7 @@ const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "Hi! I'm Daniel's AI representative. Ask me about his background, projects, skills, or experience. If I can't answer something, I'll make sure Daniel follows up with you.",
+    "Hi! I'm Daniel's AI representative — think of me as his slightly over-caffeinated professional stand-in. Ask me about his background, projects, skills, or experience. If I can't answer something, I'll make sure Daniel follows up with you.",
 };
 
 export default function ChatPage() {
