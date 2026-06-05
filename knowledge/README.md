@@ -8,7 +8,7 @@ Their contents are loaded into the agent's context at startup. The agent uses th
 
 Current files:
 - `Daniel_David_CV_May_2026_Har.pdf` — latest resume/CV
-- `LinkedIn_Bio.nd` — professional bio
+- `LinkedIn_Bio.md` — professional bio and career preferences
 - `Protfolio - Daniel David.pdf` — portfolio
 
 Examples to add:
