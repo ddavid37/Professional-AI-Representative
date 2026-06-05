@@ -77,6 +77,56 @@ flowchart TB
     Twilio --> Daniel
 ```
 
+### Agent unit + all context sources
+
+How the **LangGraph agent** fits together: where chat memory lives (browser), what context it receives each request (system prompt vs. messages), and when tools run.
+
+```mermaid
+flowchart TB
+    subgraph Browser["Browser (memory lives here)"]
+        LS[("localStorage<br/>daniel_ai_chat_history")]
+        ReactState["React state: messages[]"]
+        LS <-->|load / save on every change| ReactState
+    end
+
+    subgraph Request["Each POST /api/chat/stream"]
+        Payload["JSON body:<br/>messages: [{role, content}, ...]"]
+    end
+
+    subgraph Backend["FastAPI — stateless per request"]
+        Convert["state_from_chat_history()"]
+        ChatMsgs["Chat messages for this turn:<br/>HumanMessage + AIMessage list"]
+        Bypass["_maybe_whatsapp_reply()<br/>(regex shortcut — NOT the agent)"]
+    end
+
+    subgraph AgentUnit["LangGraph Agent (GRAPH) — one unit"]
+        direction TB
+        SP["System prompt (fixed at startup)<br/>• Rules<br/>• knowledge/ PDFs & text"]
+        LLM["GPT-4o-mini"]
+        Tool["Tool: notify_daniel_on_whatsapp"]
+        SP --> LLM
+        ChatMsgs --> LLM
+        LLM -->|"if unsure + has name/email/question"| Tool
+        Tool --> Twilio["Twilio WhatsApp → Daniel"]
+        LLM --> Reply["Final assistant reply"]
+    end
+
+    subgraph Knowledge["Daniel facts (NOT chat memory)"]
+        KDir["knowledge/<br/>CV, bio, portfolio..."]
+        KLoader["load_knowledge_dir() + PyPDF"]
+        KDir --> KLoader
+        KLoader -->|"baked into system prompt at startup"| SP
+    end
+
+    ReactState -->|"full history every send"| Payload
+    Payload --> Convert
+    Convert --> ChatMsgs
+    Payload --> Bypass
+    Bypass -->|"email + prior question found"| Twilio
+    Bypass -->|"skip agent"| DirectReply["Direct confirmation reply"]
+    ChatMsgs -->|"if bypass returns null"| AgentUnit
+```
+
 ### Chat request flow
 
 ```mermaid
