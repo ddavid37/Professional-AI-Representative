@@ -9,6 +9,7 @@ import {
   Lock,
   MessageSquare,
   Network,
+  Search,
   Server,
   Shield,
 } from "lucide-react";
@@ -17,150 +18,155 @@ const skills = [
   { icon: BrainCircuit, label: "LangGraph & Agentic AI",   desc: "Multi-agent orchestration, state machines, tool-calling loops." },
   { icon: Network,      label: "Federated Learning",       desc: "Privacy-preserving ML with NVFlare across distributed nodes." },
   { icon: Shield,       label: "ML Security",              desc: "Adversarial robustness, prompt injection guards, secure inference." },
-  { icon: Server,       label: "FastAPI & Cloud",          desc: "Production Python backends on Azure & Railway with SSE streaming." },
-  { icon: Lock,         label: "LLM Ops",                  desc: "Azure OpenAI Foundry, RAG pipelines, Pydantic-validated tool schemas." },
+  { icon: Server,       label: "FastAPI & Cloud",          desc: "Production Python backends with SSE streaming and serverless deploys." },
+  { icon: Lock,         label: "LLM Ops",                  desc: "OpenAI & Azure Foundry, RAG pipelines, Pydantic-validated tool schemas." },
   { icon: Github,       label: "Open Source",              desc: "NVFlare contributor. Active GitHub presence in ML & AI infra repos." },
 ];
 
 export default function HomePage() {
   return (
-    <div className="mx-auto max-w-6xl px-6 py-20">
+    <div className="w-full">
 
-      {/* ── Hero ───────────────────────────────────────────────── */}
-      <section className="mb-28 flex flex-col-reverse items-start gap-10 md:flex-row md:items-center md:justify-between">
-        {/* Left: text */}
-        <div className="flex flex-col gap-6">
-          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs text-text-secondary">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
-            Available · Graduating May 2026
-          </span>
+      {/* ── Hero — full viewport ──────────────────────────────── */}
+      <section className="relative min-h-[calc(100vh-4rem)] w-full">
+        <div className="grid h-full min-h-[calc(100vh-4rem)] w-full grid-cols-1 items-center gap-10 px-6 py-16 lg:grid-cols-[1fr_auto] lg:gap-16 lg:px-12 xl:px-20 xl:gap-24">
+          {/* Left: text */}
+          <div className="flex flex-col gap-7 lg:max-w-2xl">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-surface/80 px-3.5 py-1.5 text-xs tracking-wide text-text-secondary">
+              <Search size={12} className="text-accent" strokeWidth={2} />
+              Open to full-time ML / AI roles
+            </span>
 
-          <h1 className="text-5xl font-bold leading-tight tracking-tight md:text-6xl">
-            Hi, I'm{" "}
-            <span className="text-accent glow-accent">Daniel David</span>
-          </h1>
+            <h1 className="font-display text-[2.75rem] leading-[1.08] tracking-tight text-text-primary sm:text-6xl lg:text-7xl xl:text-[4.25rem]">
+              Hi, I'm{" "}
+              <span className="text-accent">Daniel David</span>
+            </h1>
 
-          <p className="max-w-xl text-lg text-text-secondary leading-relaxed">
-            ML Engineer at{" "}
-            <span className="text-text-primary font-medium">Rhino Federated Computing</span>{" "}
-            and CS student at{" "}
-            <span className="text-text-primary font-medium">Columbia University</span>{" "}
-            (Class of&nbsp;May&nbsp;2026). I build privacy-preserving AI systems,
-            agentic workflows, and production-grade ML pipelines.
-          </p>
+            <p className="max-w-xl text-lg leading-relaxed text-text-secondary lg:text-xl lg:leading-relaxed">
+              Columbia University graduate{" "}
+              <span className="text-text-primary">(B.S. Computer Science, May 2026)</span>.
+              Former ML Engineer at Rhino Federated Computing. I build
+              privacy-preserving AI systems, agentic workflows, and
+              production-grade ML pipelines — and I'm looking for my next role.
+            </p>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/chat"
-              className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-background transition-opacity hover:opacity-90"
-            >
-              <MessageSquare size={15} />
-              Chat with my AI Rep
-            </Link>
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm text-text-secondary transition-colors hover:border-accent hover:text-accent"
-            >
-              Get in touch
-              <ArrowRight size={14} />
-            </Link>
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <Link
+                href="/chat"
+                className="inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm font-medium text-background transition-opacity hover:opacity-90"
+              >
+                <MessageSquare size={15} />
+                Chat with my AI Rep
+              </Link>
+              <Link
+                href="/contact"
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-6 py-3 text-sm text-text-secondary transition-colors hover:border-accent/50 hover:text-text-primary"
+              >
+                Get in touch
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-5 pt-2">
+              <a
+                href="http://github.com/ddavid37"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-text-muted transition-colors hover:text-text-primary"
+                aria-label="GitHub"
+              >
+                <Github size={20} />
+              </a>
+              <a
+                href="https://www.linkedin.com/in/ddavid37"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-text-muted transition-colors hover:text-text-primary"
+                aria-label="LinkedIn"
+              >
+                <Linkedin size={20} />
+              </a>
+            </div>
           </div>
 
-          {/* Social links */}
-          <div className="flex items-center gap-4 pt-2">
-            <a
-              href="http://github.com/ddavid37"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="text-text-muted hover:text-text-primary transition-colors"
-              aria-label="GitHub"
-            >
-              <Github size={18} />
-            </a>
-            <a
-              href="https://www.linkedin.com/in/ddavid37"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="text-text-muted hover:text-text-primary transition-colors"
-              aria-label="LinkedIn"
-            >
-              <Linkedin size={18} />
-            </a>
-          </div>
-        </div>
-
-        {/* Right: photo */}
-        <div className="shrink-0">
-          <div className="relative h-52 w-52 md:h-64 md:w-64 overflow-hidden rounded-2xl border border-border shadow-lg shadow-accent/10">
-            <Image
-              src="/DanielProfessionalPicture.png"
-              alt="Daniel David"
-              fill
-              className="object-cover object-top"
-              priority
-            />
+          {/* Right: photo */}
+          <div className="mx-auto shrink-0 lg:mx-0 lg:mr-4 xl:mr-8">
+            <div className="relative h-72 w-72 overflow-hidden rounded-2xl border border-border/80 shadow-2xl shadow-black/40 sm:h-80 sm:w-80 lg:h-[28rem] lg:w-[22rem] xl:h-[32rem] xl:w-[26rem]">
+              <Image
+                src="/DanielProfessionalPicture.png"
+                alt="Daniel David"
+                fill
+                className="object-cover object-top"
+                priority
+              />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Graduation banner ─────────────────────────────────── */}
-      <section className="mb-28">
-        <div className="rounded-xl border border-border bg-surface p-6 flex flex-col md:flex-row items-start md:items-center gap-4">
-          <GraduationCap size={32} className="text-accent shrink-0" strokeWidth={1.5} />
+      {/* ── Status banner ───────────────────────────────────── */}
+      <section className="w-full px-6 pb-24 lg:px-12 xl:px-20">
+        <div className="flex w-full flex-col items-start gap-5 rounded-2xl border border-border bg-surface/60 p-8 md:flex-row md:items-center md:gap-8">
+          <GraduationCap size={36} className="shrink-0 text-accent" strokeWidth={1.25} />
           <div>
-            <p className="text-sm font-medium text-accent mb-0.5">Upcoming milestone</p>
-            <h2 className="text-lg font-semibold text-text-primary">
-              B.S. Computer Science — Columbia University · May 2026
+            <p className="mb-1 text-xs font-medium uppercase tracking-widest text-accent">
+              Recently graduated
+            </p>
+            <h2 className="font-display text-2xl text-text-primary md:text-3xl">
+              B.S. Computer Science — Columbia University
             </h2>
-            <p className="text-sm text-text-secondary mt-1">
-              Specialising in AI/ML, distributed systems, and software engineering.
-              Open to full-time opportunities starting Summer 2026.
+            <p className="mt-2 max-w-3xl text-base leading-relaxed text-text-secondary">
+              Focused on AI/ML, distributed systems, and software engineering.
+              Previously at Rhino Federated Computing. Now exploring full-time
+              opportunities in ML engineering, applied AI, and federated learning.
             </p>
           </div>
         </div>
       </section>
 
       {/* ── Skills grid ───────────────────────────────────────── */}
-      <section className="mb-20">
-        <h2 className="mb-8 text-2xl font-bold text-text-primary">
+      <section className="w-full px-6 pb-24 lg:px-12 xl:px-20">
+        <h2 className="font-display mb-10 text-3xl text-text-primary md:text-4xl">
           What I work on
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid w-full gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {skills.map(({ icon: Icon, label, desc }) => (
             <div
               key={label}
-              className="group rounded-xl border border-border bg-surface p-5 transition-colors hover:border-accent/40"
+              className="group rounded-2xl border border-border bg-surface/40 p-6 transition-colors hover:border-accent/30 hover:bg-surface/70"
             >
               <Icon
                 size={20}
-                className="mb-3 text-accent opacity-80 group-hover:opacity-100 transition-opacity"
-                strokeWidth={1.5}
+                className="mb-4 text-accent opacity-90 transition-opacity group-hover:opacity-100"
+                strokeWidth={1.25}
               />
-              <h3 className="text-sm font-semibold text-text-primary mb-1">
+              <h3 className="mb-2 text-sm font-medium text-text-primary">
                 {label}
               </h3>
-              <p className="text-xs text-text-secondary leading-relaxed">{desc}</p>
+              <p className="text-sm leading-relaxed text-text-secondary">{desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── CTA ───────────────────────────────────────────────── */}
-      <section className="rounded-xl border border-accent/20 bg-accent-muted p-8 text-center">
-        <h2 className="text-xl font-bold mb-2 text-text-primary">
-          Not sure what to ask?
-        </h2>
-        <p className="text-text-secondary text-sm mb-5 max-w-lg mx-auto">
-          My AI representative knows my background, projects, and skills.
-          Ask it anything — if it doesn't know, it'll make sure I follow up.
-        </p>
-        <Link
-          href="/chat"
-          className="inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-background hover:opacity-90 transition-opacity"
-        >
-          <MessageSquare size={14} />
-          Start a conversation
-        </Link>
+      <section className="w-full px-6 pb-24 lg:px-12 xl:px-20">
+        <div className="w-full rounded-2xl border border-accent/20 bg-accent-muted px-8 py-14 text-center md:px-16">
+          <h2 className="font-display mb-3 text-2xl text-text-primary md:text-3xl">
+            Not sure what to ask?
+          </h2>
+          <p className="mx-auto mb-6 max-w-xl text-base text-text-secondary">
+            My AI representative knows my background, projects, and skills.
+            Ask it anything — if it doesn't know, it'll make sure I follow up.
+          </p>
+          <Link
+            href="/chat"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm font-medium text-background transition-opacity hover:opacity-90"
+          >
+            <MessageSquare size={14} />
+            Start a conversation
+          </Link>
+        </div>
       </section>
 
     </div>

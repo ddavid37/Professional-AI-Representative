@@ -1,14 +1,29 @@
 import type { Metadata } from "next";
+import { DM_Sans, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import Nav from "./components/Nav";
 
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-display",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Daniel David — AI Representative",
+  title: "Daniel David — ML Engineer",
   description:
-    "Professional AI representative for Daniel David, ML Engineer & Columbia CS '26.",
+    "Daniel David — Columbia CS graduate. ML engineer specializing in federated learning, agentic AI, and production ML systems. Open to new opportunities.",
   openGraph: {
-    title: "Daniel David — AI Representative",
-    description: "Chat with Daniel's AI representative. Ask about his work, skills, or leave a message.",
+    title: "Daniel David — ML Engineer",
+    description:
+      "Columbia CS graduate open to ML/AI roles. Chat with my AI representative or get in touch.",
     type: "website",
   },
 };
@@ -19,8 +34,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <body className="min-h-screen bg-background text-text-primary antialiased">
+    <html lang="en" className={`scroll-smooth ${dmSans.variable} ${instrumentSerif.variable}`}>
+      <body className="min-h-screen bg-background font-sans text-text-primary antialiased">
         <Nav />
         <main className="pt-16">{children}</main>
       </body>

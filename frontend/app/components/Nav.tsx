@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bot, FileText, Home, Mail, MessageSquare } from "lucide-react";
+import { FileText, Home, Mail, MessageSquare } from "lucide-react";
 
 const links = [
   { href: "/",        label: "Home",    icon: Home           },
@@ -15,18 +15,15 @@ export default function Nav() {
   const pathname = usePathname();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
-      <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        {/* Logo */}
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/80 bg-background/90 backdrop-blur-md">
+      <nav className="flex h-16 w-full items-center justify-between px-6 lg:px-12 xl:px-20">
         <Link
           href="/"
-          className="flex items-center gap-2 text-accent font-semibold tracking-tight hover:opacity-80 transition-opacity"
+          className="font-display text-lg tracking-tight text-text-primary hover:text-accent transition-colors"
         >
-          <Bot size={20} strokeWidth={1.75} />
-          <span className="text-sm">Daniel<span className="text-text-secondary">.ai</span></span>
+          Daniel David
         </Link>
 
-        {/* Links */}
         <ul className="flex items-center gap-1">
           {links.map(({ href, label, icon: Icon }) => {
             const active = pathname === href || (href !== "/" && pathname.startsWith(href));
@@ -41,7 +38,7 @@ export default function Nav() {
                   }`}
                 >
                   <Icon size={14} strokeWidth={1.75} />
-                  {label}
+                  <span className="hidden sm:inline">{label}</span>
                 </Link>
               </li>
             );

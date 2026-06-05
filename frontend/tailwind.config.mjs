@@ -7,21 +7,23 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "#0a0a0f",
-        surface: "#13131a",
-        border: "#1e1e2e",
+        background: "#0c0c0e",
+        surface: "#141418",
+        border: "#252528",
         accent: {
-          DEFAULT: "#00d4aa",
-          dark: "#00a880",
-          muted: "#00d4aa20",
+          DEFAULT: "#6ea88e",
+          dark: "#558a72",
+          muted: "#6ea88e18",
         },
         text: {
-          primary: "#e8e8f0",
-          secondary: "#8888aa",
-          muted: "#55556a",
+          primary: "#eceae4",
+          secondary: "#9a9890",
+          muted: "#5c5a56",
         },
       },
       fontFamily: {
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Georgia", "serif"],
         mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
       },
     },

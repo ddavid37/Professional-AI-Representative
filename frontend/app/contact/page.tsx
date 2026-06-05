@@ -92,7 +92,7 @@ export default function ContactPage() {
             <User size={18} className="text-accent mb-3" strokeWidth={1.5} />
             <p className="text-sm font-medium text-text-primary mb-1">Currently open to</p>
             <ul className="text-xs text-text-secondary space-y-1 list-disc list-inside">
-              <li>Full-time ML / AI Engineering roles (Summer 2026)</li>
+              <li>Full-time ML / AI Engineering roles</li>
               <li>Research collaborations in Federated Learning</li>
               <li>Speaking engagements & technical writing</li>
             </ul>
