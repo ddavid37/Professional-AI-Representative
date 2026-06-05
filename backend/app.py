@@ -30,7 +30,7 @@ from .agent import (
 )  # noqa: E402
 from .leads import (
     append_lead_record,
-    contact_info_reminder_note,
+    conversation_context_note,
     lead_confirmation_note,
     process_lead_capture,
 )
@@ -120,7 +120,7 @@ def _handle_lead_capture(request: ChatRequest) -> Optional[SystemMessage]:
                 append_lead_record(lead, whatsapp_status=whatsapp_status)
             return SystemMessage(content=lead_confirmation_note(lead))
 
-        reminder = contact_info_reminder_note(messages)
+        reminder = conversation_context_note(messages)
         if reminder:
             return SystemMessage(content=reminder)
 

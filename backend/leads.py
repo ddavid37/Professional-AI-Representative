@@ -268,6 +268,40 @@ def contact_info_reminder_note(messages: List[ChatLike]) -> Optional[str]:
     return None
 
 
+def collect_contact_prompt_note(messages: List[ChatLike]) -> Optional[str]:
+    """
+    When the visitor says 'yes' to follow-up but has not shared email yet,
+    steer the model to ask for name + email instead of a generic reset.
+    """
+    if conversation_has_contact_info(messages):
+        return None
+
+    latest = _latest_user_message(messages)
+    if not latest or not _is_affirmative_follow_up(latest):
+        return None
+
+    question = _extract_question(_user_contents(messages))
+    if question:
+        return (
+            "[Internal — user agreed to follow-up]\n"
+            f"The visitor agreed to forward this question to Daniel: \"{question}\".\n"
+            "In your reply, ask for their **full name** and **email address** so Daniel can "
+            "follow up. Do NOT give a generic greeting like \"how can I assist you today\". "
+            "Do NOT ask if they want to proceed again — they already said yes."
+        )
+
+    return (
+        "[Internal — user agreed to follow-up]\n"
+        "The visitor agreed to have Daniel follow up. Ask for their **full name** and "
+        "**email address** in your next reply. Do NOT reset with a generic greeting."
+    )
+
+
+def conversation_context_note(messages: List[ChatLike]) -> Optional[str]:
+    """Pick the right injected note for the current conversation state."""
+    return contact_info_reminder_note(messages) or collect_contact_prompt_note(messages)
+
+
 def _lead_key(lead: LeadInfo) -> str:
     return f"{lead.email.lower()}|{lead.question.strip().lower()}"
 
