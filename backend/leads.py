@@ -10,6 +10,25 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Protocol
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+QUESTION_HINTS = (
+    "how",
+    "what",
+    "when",
+    "where",
+    "why",
+    "who",
+    "does",
+    "do ",
+    "is ",
+    "are ",
+    "can ",
+    "could ",
+    "would ",
+    "daniel",
+    "sibling",
+    "salary",
+    "family",
+)
 
 
 class ChatLike(Protocol):
@@ -36,13 +55,60 @@ def ensure_leads_dir() -> None:
     leads_file_path().parent.mkdir(parents=True, exist_ok=True)
 
 
-def _is_contact_reply(text: str) -> bool:
-    """True when the message looks like someone sharing contact details."""
-    return EMAIL_RE.search(text) is not None
+def _user_contents(messages: List[ChatLike]) -> List[str]:
+    return [m.content.strip() for m in messages if m.role == "user" and m.content.strip()]
+
+
+def _find_email_in_history(user_contents: List[str]) -> Optional[str]:
+    for content in reversed(user_contents):
+        match = EMAIL_RE.search(content)
+        if match:
+            return match.group(0)
+    return None
+
+
+def _looks_like_name(text: str) -> bool:
+    text = text.strip()
+    if not text or "@" in text or "?" in text:
+        return False
+    lower = text.lower()
+    if any(hint in lower for hint in QUESTION_HINTS):
+        return False
+    words = text.split()
+    return 1 <= len(words) <= 6 and len(text) < 80
+
+
+def _line_is_question(line: str) -> bool:
+    line = line.strip()
+    if not line or EMAIL_RE.search(line) or _looks_like_name(line):
+        return False
+    if "?" in line:
+        return True
+    lower = line.lower()
+    return any(hint in lower for hint in QUESTION_HINTS)
+
+
+def _question_from_message(text: str) -> Optional[str]:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if len(lines) > 1:
+        for line in reversed(lines):
+            if _line_is_question(line):
+                return line
+        return None
+    if _line_is_question(text):
+        return text.strip()
+    return None
+
+
+def _extract_question(user_contents: List[str]) -> Optional[str]:
+    for content in reversed(user_contents):
+        question = _question_from_message(content)
+        if question:
+            return question
+    return None
 
 
 def _extract_name_from_contact_message(text: str, email: str) -> str:
-    """Best-effort name parse from a contact-details message."""
     for pattern in (
         r"(?:name|i(?:'m| am))\s*[:\s]+(.+?)(?:,|\n|$)",
         r"^(.+?)\s*,\s*" + re.escape(email),
@@ -55,58 +121,66 @@ def _extract_name_from_contact_message(text: str, email: str) -> str:
 
     for line in text.splitlines():
         stripped = line.strip()
-        if stripped and email not in stripped and "@" not in stripped:
+        if stripped and email not in stripped and "@" not in stripped and _looks_like_name(stripped):
             return stripped
 
     return "unknown"
 
 
-def _find_original_question(messages: List[ChatLike]) -> str:
-    """
-    Walk backward through user turns and pick the most recent message that is
-    not the contact-details reply (the one containing an email).
-    """
-    user_messages = [m.content.strip() for m in messages if m.role == "user" and m.content.strip()]
-    if not user_messages:
-        return "No question captured"
+def _find_name_in_history(user_contents: List[str], email: str) -> str:
+    for index, content in enumerate(user_contents):
+        if email not in content and not EMAIL_RE.search(content):
+            continue
+        name = _extract_name_from_contact_message(content, email)
+        if name != "unknown":
+            return name
+        if index > 0 and _looks_like_name(user_contents[index - 1]):
+            return user_contents[index - 1].strip()
 
-    if len(user_messages) == 1:
-        return user_messages[0]
+    for content in user_contents:
+        if _looks_like_name(content):
+            return content.strip()
 
-    # Latest user message is usually the contact reply; question is the prior turn.
-    for content in reversed(user_messages[:-1]):
-        if not _is_contact_reply(content):
-            return content
+    return "unknown"
 
-    return user_messages[0]
+
+def conversation_has_contact_info(messages: List[ChatLike]) -> bool:
+    """True when the visitor has shared an email anywhere in the thread."""
+    return _find_email_in_history(_user_contents(messages)) is not None
 
 
 def extract_lead_from_messages(messages: List[ChatLike]) -> Optional[LeadInfo]:
     """
-    When the latest user message includes an email, treat the conversation as
-    a completed lead capture and return structured lead info.
+    Build a lead when the conversation contains both an email and a substantive
+    question, even if the user sent them in separate messages.
     """
-    if not messages:
+    user_contents = _user_contents(messages)
+    if not user_contents:
         return None
 
-    latest_user: Optional[str] = None
-    for msg in reversed(messages):
-        if msg.role == "user" and msg.content.strip():
-            latest_user = msg.content.strip()
-            break
-
-    if not latest_user:
+    email = _find_email_in_history(user_contents)
+    if not email:
         return None
 
-    email_match = EMAIL_RE.search(latest_user)
-    if not email_match:
+    question = _extract_question(user_contents)
+    if not question:
         return None
 
-    email = email_match.group(0)
-    name = _extract_name_from_contact_message(latest_user, email)
-    question = _find_original_question(messages)
-
+    name = _find_name_in_history(user_contents, email)
     return LeadInfo(name=name, email=email, question=question)
+
+
+def lead_confirmation_note(lead: LeadInfo) -> str:
+    """System note injected so the agent confirms capture instead of re-asking."""
+    return (
+        "[Internal — inquiry recorded]\n"
+        "Daniel was notified on WhatsApp about this visitor inquiry.\n"
+        f"- Name: {lead.name}\n"
+        f"- Email: {lead.email}\n"
+        f"- Question: {lead.question}\n\n"
+        "Respond warmly: confirm the inquiry was recorded, restate their question, "
+        "and say Daniel will follow up personally. Do NOT ask for name or email again."
+    )
 
 
 def _lead_key(lead: LeadInfo) -> str:
@@ -119,13 +193,15 @@ def lead_already_logged(lead: LeadInfo) -> bool:
     if not path.is_file():
         return False
 
-    key = _lead_key(lead)
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
         return False
 
-    return f"email={lead.email.lower()}" in text.lower() and lead.question.strip().lower() in text.lower()
+    return (
+        f"email={lead.email.lower()}" in text.lower()
+        and lead.question.strip().lower() in text.lower()
+    )
 
 
 def append_lead_record(lead: LeadInfo, whatsapp_status: str) -> str:
@@ -143,8 +219,8 @@ def append_lead_record(lead: LeadInfo, whatsapp_status: str) -> str:
 
 def process_lead_capture(messages: List[ChatLike]) -> Optional[Dict[str, Any]]:
     """
-    Extract a lead from the conversation, log it, and return metadata for the caller.
-    Returns None when no new lead is detected.
+    Extract a lead from the conversation and return metadata for the caller.
+    Returns None when email + question are not both present yet.
     """
     lead = extract_lead_from_messages(messages)
     if lead is None:

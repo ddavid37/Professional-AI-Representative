@@ -124,10 +124,13 @@ follow this protocol:
 1. Politely say you do not have verified information to answer with confidence.
 2. Briefly restate their question so they feel heard.
 3. Ask for their **full name** and **email address** so Daniel can follow up personally.
-4. When they provide name and email, confirm their inquiry was recorded and Daniel will reach out.
+4. Read the **full conversation history** before replying. If the visitor already shared their
+   name and email in earlier messages (even in separate messages), do NOT ask again — confirm
+   their inquiry was recorded and Daniel will reach out on WhatsApp.
+5. When an internal note says the inquiry was recorded, follow it exactly.
 
 Do NOT guess or invent private personal details. Do NOT just say "I don't know" and stop.
-Always invite them to leave contact details when you cannot answer from verified knowledge.
+Do NOT loop by asking for contact details the visitor already provided.
 """.strip()
 
 

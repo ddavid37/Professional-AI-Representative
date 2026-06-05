@@ -19,7 +19,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from pydantic import BaseModel
 
 from .agent import (
@@ -28,7 +28,7 @@ from .agent import (
     initial_state_from_user_message,
     state_from_chat_history,
 )  # noqa: E402
-from .leads import append_lead_record, process_lead_capture
+from .leads import append_lead_record, lead_confirmation_note, process_lead_capture
 from .whatsapp import send_lead_notification, send_test_message
 
 
@@ -88,32 +88,42 @@ def _conversation_messages(request: ChatRequest) -> List[ChatMessage]:
     return []
 
 
-def _handle_lead_capture(request: ChatRequest) -> None:
+def _handle_lead_capture(request: ChatRequest) -> Optional[SystemMessage]:
     """
-    When a visitor shares contact details, log the lead and notify Daniel on WhatsApp.
-    Failures are logged but never break chat.
+    When a visitor shares contact details + a question, log the lead, notify
+    Daniel on WhatsApp, and return a system note so the agent confirms capture.
     """
     messages = _conversation_messages(request)
     if not messages:
-        return
+        return None
 
     try:
         result = process_lead_capture(messages)
-        if result is None or result.get("skipped"):
-            return
+        if result is None:
+            return None
 
         lead = result["lead"]
-        notify = send_lead_notification(
-            name=lead.name,
-            email=lead.email,
-            question=lead.question,
-        )
-        whatsapp_status = notify.get("status", "error")
-        if whatsapp_status != "sent":
-            logger.warning("WhatsApp lead notification failed: %s", notify.get("message"))
-        append_lead_record(lead, whatsapp_status=whatsapp_status)
+        if not result.get("skipped"):
+            notify = send_lead_notification(
+                name=lead.name,
+                email=lead.email,
+                question=lead.question,
+            )
+            whatsapp_status = notify.get("status", "error")
+            if whatsapp_status != "sent":
+                logger.warning("WhatsApp lead notification failed: %s", notify.get("message"))
+            append_lead_record(lead, whatsapp_status=whatsapp_status)
+
+        return SystemMessage(content=lead_confirmation_note(lead))
     except Exception:
         logger.exception("Lead capture failed")
+        return None
+
+
+def _apply_lead_context(state: AgentState, note: Optional[SystemMessage]) -> AgentState:
+    if note is None:
+        return state
+    return {**state, "messages": [*state["messages"], note]}
 
 
 @app.get("/healthz", tags=["meta"])
@@ -155,7 +165,8 @@ async def chat(request: ChatRequest) -> ChatResponse:
             detail="Either `message` or `messages` must be provided.",
         )
 
-    _handle_lead_capture(request)
+    lead_note = _handle_lead_capture(request)
+    state = _apply_lead_context(state, lead_note)
     final_state: AgentState = GRAPH.invoke(state)
 
     ai_messages = [m for m in final_state["messages"] if isinstance(m, AIMessage)]
@@ -219,7 +230,8 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             detail="Either `message` or `messages` must be provided.",
         )
 
-    _handle_lead_capture(request)
+    lead_note = _handle_lead_capture(request)
+    state = _apply_lead_context(state, lead_note)
     return StreamingResponse(
         _sse_event_stream(state),
         media_type="text/event-stream",
