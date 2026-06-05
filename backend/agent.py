@@ -1,87 +1,41 @@
 """
-LangGraph-based agent core for the Professional AI Representative.
+LangGraph agent for Daniel's AI representative.
 
-This module:
-- Defines the typed AgentState with LangGraph reducers.
-- Wires standard OpenAI (gpt-4o-mini) as the chat model via OPENAI_API_KEY.
-- Injects persona + knowledge from the existing knowledge_loader.
-- Enforces an "I don't know" protocol that asks for contact info instead of hallucinating.
+Simple design:
+- Answer from knowledge/ when confident.
+- Otherwise collect name + email and call notify_daniel_on_whatsapp.
 """
 
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, TypedDict
+from pathlib import Path
+from typing import Any, Dict, List
 
-from typing_extensions import Annotated
+from dotenv import load_dotenv
 
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=True)
+
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
+from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
-from langgraph.graph import END, START, StateGraph
-from langgraph.graph.message import add_messages
+from langgraph.prebuilt import create_react_agent
 
 from custom.knowledge_loader import (
     KNOWLEDGE_DIR_NAME,
     get_project_dir,
     load_knowledge_dir,
 )
-
-
-def _append_leads(
-    existing: List[Dict[str, Any]] | None, new: List[Dict[str, Any]] | None
-) -> List[Dict[str, Any]]:
-    """
-    Custom reducer for the `leads` key in the AgentState.
-
-    LangGraph will call this with the previous and new values whenever a node
-    returns a partial state update for `leads`.
-    """
-    if not existing:
-        existing = []
-    if not new:
-        new = []
-    return [*existing, *new]
-
-
-class AgentState(TypedDict):
-    """
-    Global state for the LangGraph workflow.
-
-    - messages: running chat history (system + user + assistant).
-      Uses `add_messages` so nodes can append without clobbering history.
-    - leads: structured list of captured leads; updated via `_append_leads`.
-    """
-
-    messages: Annotated[List[AnyMessage], add_messages]
-    leads: Annotated[List[Dict[str, Any]], _append_leads]
-
-
-_MODEL: ChatOpenAI | None = None
+from .whatsapp import send_lead_notification
 
 
 def _get_chat_model() -> ChatOpenAI:
-    """
-    Construct (or reuse) a ChatOpenAI model using the standard OpenAI API.
-
-    Required env var:
-      - OPENAI_API_KEY
-
-    Optional env var (defaults to gpt-4o-mini):
-      - OPENAI_MODEL   e.g. gpt-4o, gpt-4o-mini
-    """
-    global _MODEL
-    if _MODEL is not None:
-        return _MODEL
-
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError(
-            "Missing OPENAI_API_KEY. Set it in .env or as a Railway environment variable."
-        )
+        raise ValueError("Missing OPENAI_API_KEY.")
 
     model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    _MODEL = ChatOpenAI(api_key=api_key, model=model_name)
-    return _MODEL
+    return ChatOpenAI(api_key=api_key, model=model_name)
 
 
 _DEFAULT_BIO = """
@@ -90,113 +44,55 @@ His work focuses on ML Security, Federated Learning, and NVFlare. He is professi
 """.strip()
 
 
-def _build_system_prompt() -> str:
+@tool
+def notify_daniel_on_whatsapp(name: str, email: str, question: str) -> str:
     """
-    Build the system prompt from the knowledge directory plus a safety policy.
+    Notify Daniel on WhatsApp about a question you cannot answer from verified knowledge.
+    Call this once you have the visitor's full name, email, and their question.
+    """
+    result = send_lead_notification(name=name, email=email, question=question)
+    if result.get("status") == "sent":
+        return "Daniel was notified on WhatsApp."
+    return f"Could not reach Daniel on WhatsApp: {result.get('message', 'unknown error')}"
 
-    Mirrors the behavior of the existing agent_config.py but tailored for LangGraph.
-    """
+
+def _build_system_prompt() -> str:
     project_dir = get_project_dir()
     knowledge_dir = project_dir / KNOWLEDGE_DIR_NAME
     knowledge_text = load_knowledge_dir(knowledge_dir).strip()
-
     persona_section = knowledge_text if knowledge_text else _DEFAULT_BIO
 
-    return f"""You are the professional representative and gatekeeper for Daniel David.
+    return f"""You are the professional representative for Daniel David.
 
-You must be:
-- Professional and clear.
-- Approachable and a bit witty when appropriate.
-- Grounded in factual information only.
-
-## Persona and knowledge about Daniel
+## Knowledge about Daniel (answer from this when you are sure)
 {persona_section}
 
-## Grounding and safety
-- Answer only from the information above or general, widely known public knowledge.
-- NEVER invent specific private details (salaries, confidential projects, internal company data).
-- If you are not confident you know the answer, you MUST avoid hallucinating.
-
-## When you don't know
-If you cannot answer with high confidence (because the question is too private, too specific,
-or not covered by your knowledge — e.g. family details, salary, siblings, confidential projects),
-follow this protocol:
-1. Politely say you do not have verified information to answer with confidence.
-2. Briefly restate their question so they feel heard.
-3. Ask if they would like you to pass the question to Daniel, then ask for **full name** and **email**.
-4. If they reply **yes**, **ok**, or agree to proceed, immediately ask for name and email —
-   do NOT respond with a generic greeting like "how can I assist you today".
-5. Read the **full conversation history** before replying. If they already shared name and email
-   (even in one line like "Name email@x.com question"), confirm Daniel was notified — do NOT ask again.
-6. When an internal note is present, follow it exactly. Never re-offer to collect email after they shared it.
-7. Short replies like "yes", "ok", or "ask daniel" mean they agree — do not treat them as gibberish.
-
-Do NOT guess or invent private personal details. Do NOT loop by re-asking for contact details.
+## Your rule
+1. If you KNOW the answer from the knowledge above, answer directly.
+2. If you are NOT sure (family/personal details, siblings, salary, private info, etc.), do NOT guess.
+   - Ask for their full name and email.
+   - Once you have name, email, AND their question, call `notify_daniel_on_whatsapp`.
+3. Read the full conversation. If they already gave name and email, call the tool — do not ask again.
+4. Short replies like "yes" mean they agree — continue the flow, do not restart with a generic greeting.
 """.strip()
 
 
-def _ensure_system_message(messages: List[AnyMessage]) -> List[AnyMessage]:
-    """Ensure the first message is our system prompt."""
-    if any(isinstance(m, SystemMessage) for m in messages):
-        return messages
-    system = SystemMessage(content=_build_system_prompt())
-    return [system, *messages]
-
-
-def agent_node(state: AgentState) -> Dict[str, Any]:
-    """
-    Single-node "brain" for now:
-    - Injects system prompt if missing.
-    - Sends the message history to OpenAI.
-    - Appends the assistant reply to `messages`.
-    """
-    model = _get_chat_model()
-    messages = _ensure_system_message(state["messages"])
-    response: AIMessage = model.invoke(messages)
-    return {"messages": [response]}
-
-
 def build_agent_graph():
-    """
-    Construct the LangGraph workflow for this agent.
-
-    For now this is a simple single-node graph:
-      START -> agent_node -> END
-
-    The state still includes `leads` with a custom reducer so we can
-    later plug in a LeadCapture tool node that appends to `leads`.
-    """
-    builder = StateGraph(AgentState)
-    builder.add_node("agent", agent_node)
-    builder.add_edge(START, "agent")
-    builder.add_edge("agent", END)
-    return builder.compile()
+    return create_react_agent(
+        _get_chat_model(),
+        [notify_daniel_on_whatsapp],
+        prompt=_build_system_prompt(),
+    )
 
 
-# Pre-compiled graph for reuse by the FastAPI app.
 GRAPH = build_agent_graph()
 
 
-def initial_state_from_user_message(content: str) -> AgentState:
-    """
-    Helper to build an initial AgentState from a single user message.
-    """
-    return {
-        "messages": [HumanMessage(content=content)],
-        "leads": [],
-    }
+def initial_state_from_user_message(content: str) -> Dict[str, List[AnyMessage]]:
+    return {"messages": [HumanMessage(content=content)]}
 
 
-def state_from_chat_history(history: List[Dict[str, Any]]) -> AgentState:
-    """
-    Build an AgentState from a list of chat-like message dicts.
-
-    Expected shape for each entry in `history`:
-      {"role": "user" | "assistant", "content": "<text>"}
-
-    System messages are injected later by `_ensure_system_message` in `agent_node`,
-    so we only need to translate user and assistant roles here.
-    """
+def state_from_chat_history(history: List[Dict[str, Any]]) -> Dict[str, List[AnyMessage]]:
     messages: List[AnyMessage] = []
     for item in history:
         role = item.get("role")
@@ -207,14 +103,4 @@ def state_from_chat_history(history: List[Dict[str, Any]]) -> AgentState:
             messages.append(HumanMessage(content=content))
         elif role == "assistant":
             messages.append(AIMessage(content=content))
-
-    # Fallback: if history was empty or filtered out, keep the API contract
-    # by returning an empty conversation with no leads.
-    if not messages:
-        return {"messages": [], "leads": []}
-
-    return {
-        "messages": messages,
-        "leads": [],
-    }
-
+    return {"messages": messages}
