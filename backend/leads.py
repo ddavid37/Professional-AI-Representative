@@ -29,9 +29,15 @@ QUESTION_HINTS = (
     "sibli",  # common typo
     "salary",
     "family",
-    "ask daniel",
+    "mom",
+    "mother",
+    "dad",
+    "father",
+    "parent",
 )
-AFFIRMATIVE_HINTS = ("yes", "ok", "okay", "sure", "please", "go ahead", "do it", "ask daniel")
+AFFIRMATIVE_EXACT = frozenset(
+    {"yes", "ok", "okay", "sure", "y", "yeah", "yep", "please", "go ahead", "do it", "ask daniel"}
+)
 
 
 class ChatLike(Protocol):
@@ -138,6 +144,13 @@ def _is_meta_clarification(text: str) -> bool:
         "i already gave",
         "i gave you",
         "please ask daniel",
+        "let him know",
+        "let daniel know",
+        "i need to know, can you",
+        "can you please let",
+        "pass that along",
+        "my info is",
+        "ok my info",
         "yes,",
         "yes ",
         "you my name",
@@ -147,13 +160,14 @@ def _is_meta_clarification(text: str) -> bool:
 
 
 def _extract_question(user_contents: List[str]) -> Optional[str]:
+    """Use the most recent substantive question, not the first in the thread."""
     candidates: List[str] = []
     for content in user_contents:
         question = _question_from_message(content)
         if question:
             candidates.append(question)
 
-    for question in candidates:
+    for question in reversed(candidates):
         if not _is_meta_clarification(question):
             return question
 
@@ -222,8 +236,13 @@ def _latest_user_message(messages: List[ChatLike]) -> Optional[str]:
 
 
 def _is_affirmative_follow_up(text: str) -> bool:
+    """Short consent only — avoid matching 'can you please let him know'."""
     lower = text.lower().strip()
-    return any(hint in lower for hint in AFFIRMATIVE_HINTS) and "@" not in lower
+    if "@" in lower or len(lower) > 40:
+        return False
+    if lower in AFFIRMATIVE_EXACT:
+        return True
+    return lower.startswith(("yes ", "ok ", "okay ", "sure "))
 
 
 def extract_lead_from_messages(messages: List[ChatLike]) -> Optional[LeadInfo]:
