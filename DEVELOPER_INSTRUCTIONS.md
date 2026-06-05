@@ -1,11 +1,14 @@
 # Developer Instructions (BE + FE)
 
-This guide is split clearly by backend and frontend, with separate terminal tabs.
+This guide covers local development and production deployment for the current stack: **FastAPI + LangGraph backend** and **Next.js frontend**.
 
 ## 1) Prerequisites
+
 - Node.js 18+
 - Python 3.10+
 - `npm` and `pip`
+- OpenAI API key
+- Twilio account with WhatsApp sandbox (or business number) for lead notifications
 
 ## 2) One-time setup
 
@@ -15,39 +18,45 @@ From repo root:
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
+cp .env.example .env
 ```
 
 From `frontend/`:
 
 ```bash
 npm install
+cp .env.local.example .env.local   # optional; or use root .env for NEXT_PUBLIC_*
 ```
 
-## 3) Environment variables (`/.env`)
+## 3) Environment variables
 
-Keep one root `.env` with BE and FE vars:
+Keep secrets in a root `.env` file (gitignored):
 
 ```env
 # Backend (private)
-OPENAI_API_KEY=your_real_openai_key
+OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o-mini
-SENDGRID_API_KEY=
-EMAIL_FROM=
-EMAIL_TO=
 
-# Frontend (public)
+# Twilio WhatsApp — required for lead notifications
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+TWILIO_WHATSAPP_TO=whatsapp:+972XXXXXXXXX
+
+# Frontend (public — baked in at build time on Vercel)
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 Rules:
 - Never commit `.env`.
 - Never put secrets in `NEXT_PUBLIC_*`.
+- Changing `NEXT_PUBLIC_*` on Vercel requires a **frontend redeploy**.
 
 ---
 
-## 4) Local run with 2 terminal tabs
+## 4) Local run (2 terminal tabs)
 
-## Terminal A - Backend (BE)
+### Terminal A — Backend
 
 Working directory: repo root
 
@@ -56,106 +65,119 @@ source .venv/bin/activate
 python -m uvicorn backend.app:app --host 0.0.0.0 --port 8000
 ```
 
-Backend verification:
+Verify:
 
 ```bash
 curl http://localhost:8000/healthz
+# {"status":"ok"}
 ```
 
-Expected:
+Test WhatsApp (optional):
 
-```json
-{"status":"ok"}
+```bash
+curl -X POST http://localhost:8000/api/test/whatsapp
 ```
 
-## Terminal B - Frontend (FE)
+### Terminal B — Frontend
 
 Working directory: `frontend/`
 
 ```bash
-cd frontend
 npm run dev
 ```
 
-Frontend URLs:
-- `http://localhost:3000`
-- `http://localhost:3000/chat`
+URLs:
+- `http://localhost:3000` — home
+- `http://localhost:3000/chat` — AI chat
+- `http://localhost:3000/resume` — CV viewer
+- `http://localhost:3000/contact` — contact form
 
 ---
 
-## 5) Restart rules (important)
+## 5) Restart rules
 
-- Changed backend code or backend env (`OPENAI_*`, `SENDGRID_*`, `EMAIL_*`)
-  - Restart **Terminal A (BE)**.
-
-- Changed frontend code
-  - `npm run dev` hot-reloads automatically.
-
-- Changed frontend env (`NEXT_PUBLIC_*`)
-  - Restart **Terminal B (FE)**.
+| Change | Action |
+|--------|--------|
+| Backend code or `OPENAI_*` / `TWILIO_*` env | Restart Terminal A |
+| Frontend code | Hot-reloads automatically |
+| `NEXT_PUBLIC_*` env | Restart Terminal B (local) or redeploy frontend (Vercel) |
+| Files in `knowledge/` | Restart backend (content loaded at startup) |
 
 ---
 
-## 6) Troubleshooting by terminal
+## 6) Troubleshooting
 
-### Backend (Terminal A) issues
-- `uvicorn: command not found`
-  - You are not in venv. Run:
-  - `source .venv/bin/activate`
-  - then run `python -m uvicorn ...`
+### Backend
 
-- `address already in use` on `:8000`
-  - Another BE process is running.
-  - Stop it:
-  - `lsof -ti :8000 | xargs kill`
+- **`uvicorn: command not found`** — Activate venv: `source .venv/bin/activate`
+- **`address already in use` on :8000** — `lsof -ti :8000 | xargs kill`
+- **Chat errors / 500** — Check `OPENAI_API_KEY` and OpenAI billing/quota
+- **WhatsApp not sending** — Verify all four `TWILIO_*` vars; test with `/api/test/whatsapp`
+- **Agent gives stale bio** — Restart backend after updating `knowledge/` files
 
-- Chat returns `Connection error`
-  - Check `curl http://localhost:8000/healthz`
-  - Verify `OPENAI_API_KEY`
-  - Check OpenAI quota/billing (429 insufficient_quota)
+### Frontend
 
-### Frontend (Terminal B) issues
-- `npm: command not found`
-  - Install Node.js / npm.
-
-- Wrong backend target
-  - Check `NEXT_PUBLIC_API_URL` in root `.env`
-  - Restart FE terminal after changing it.
+- **Wrong backend** — Check `NEXT_PUBLIC_API_URL` points to running backend
+- **Chat loops on lead capture** — Clear `daniel_ai_chat_history` in browser localStorage or use "New chat"
+- **Resume 404** — Ensure `knowledge/Daniel_David_CV_May_2026_Har.pdf` exists
 
 ---
 
-## 7) Deployment (Vercel FE + separate BE)
+## 7) Deployment (Vercel)
 
-Deploy in this exact order.
+Use **two separate Vercel projects** from the same GitHub repo.
 
-### Step 1 - Deploy Backend first
-- Platform: Railway/Render/Fly/etc.
-- Start command:
+### Project 1 — Backend API
 
-```bash
-uvicorn backend.app:app --host 0.0.0.0 --port $PORT
-```
+- **Root directory:** `.` (repo root)
+- **Framework:** Other (Python via `api/index.py` + root `vercel.json`)
+- **Env vars:** `OPENAI_API_KEY`, `OPENAI_MODEL`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO`
+- **Verify:** `https://<api-domain>/healthz`
 
-- Set backend env vars:
-  - `OPENAI_API_KEY`
-  - `OPENAI_MODEL` (optional)
-  - `SENDGRID_API_KEY`, `EMAIL_FROM`, `EMAIL_TO` (optional)
+Example production API: `https://professional-ai-representative-api.vercel.app`
 
-- Verify:
-  - `https://<your-backend-domain>/healthz`
+### Project 2 — Frontend
 
-### Step 2 - Deploy Frontend on Vercel
-- Import repo in Vercel
-- Set project root to `frontend`
-- Add FE env var:
+- **Root directory:** `frontend`
+- **Framework:** Next.js
+- **Env vars:** `NEXT_PUBLIC_API_URL=https://<api-domain-from-step-1>`
+- **Verify:** `https://<frontend-domain>/chat`
 
-```env
-NEXT_PUBLIC_API_URL=https://<your-backend-domain>
-```
-
-- Deploy and test:
-  - `https://<your-vercel-domain>/chat`
+Example production frontend: `https://professional-ai-representative.vercel.app`
 
 Notes:
-- Changing BE env vars => restart/redeploy backend.
-- Changing `NEXT_PUBLIC_*` vars => redeploy/restart frontend.
+- Backend env changes → redeploy API project
+- `NEXT_PUBLIC_*` changes → redeploy frontend project (rebuild required)
+- `knowledge/` changes → redeploy API project so the agent loads new content
+
+---
+
+## 8) Architecture summary
+
+```
+Browser → Next.js (frontend/) → FastAPI (backend/app.py)
+                                    ↓
+                              LangGraph agent (backend/agent.py)
+                                    ↓
+                         knowledge/ + OpenAI gpt-4o-mini
+                                    ↓
+                         Twilio WhatsApp (unknown questions)
+```
+
+Lead capture flow:
+1. User asks something not in knowledge → agent asks for name + email
+2. User provides contact info → `_maybe_whatsapp_reply` in `app.py` sends WhatsApp immediately when full conversation history is present
+3. Agent tool `notify_daniel_on_whatsapp` is a fallback for the same path
+
+---
+
+## 9) Legacy `custom/` path (optional)
+
+Not used in production. Requires Azure OpenAI + SendGrid env vars:
+
+```bash
+python custom/main.py          # terminal chat
+python custom/app_gradio.py    # Gradio UI
+```
+
+See `custom/` for the original OpenAI Agents SDK implementation.

@@ -39,8 +39,9 @@ def _get_chat_model() -> ChatOpenAI:
 
 
 _DEFAULT_BIO = """
-Daniel David is a CS student at Columbia University (class of 2026) and an ML Engineer at Rhino Federated Computing.
-His work focuses on ML Security, Federated Learning, and NVFlare. He is professional, approachable, and witty.
+Daniel David is a Columbia University graduate (B.A. Computer Science, May 2026) and former ML Engineer at Rhino Federated Computing.
+His work focuses on ML Security, Federated Learning, and NVFlare. He is currently open to full-time ML/AI roles.
+He is professional, approachable, and witty.
 """.strip()
 
 

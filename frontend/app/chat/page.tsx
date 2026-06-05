@@ -50,14 +50,14 @@ const STARTER_PROMPTS = [
   "What are Daniel's main ML skills?",
   "Tell me about his Federated Learning work.",
   "Is Daniel open to new opportunities?",
-  "What is Daniel graduating with?",
+  "What degree did Daniel graduate with?",
 ];
 
 const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "Hi! I'm Daniel's AI representative. Ask me about his background, projects, skills, or graduation plans. If I can't answer something, I'll make sure Daniel follows up with you.",
+    "Hi! I'm Daniel's AI representative. Ask me about his background, projects, skills, or experience. If I can't answer something, I'll make sure Daniel follows up with you.",
 };
 
 export default function ChatPage() {

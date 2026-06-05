@@ -1,47 +1,53 @@
 # Project Vision: The Professional Digital Representative
 
 ## The Mission
-To bridge the gap between static professional profiles (LinkedIn/CVs) and meaningful human connection through an **autonomous agentic gateway**. This project is not just a chatbot; it is a "Digital Alter-Ego" designed to represent my technical persona, protect my focus, and capture high-value opportunities with 24/7 reliability.
 
-## The Vision: From MVP to Autonomous System
-My development plan follows a "Core-Out" strategy, scaling from a single-agent script to a production-grade multi-agent ecosystem.
+Bridge the gap between static professional profiles (LinkedIn/CVs) and meaningful connection through an **autonomous agentic gateway**. This is a "Digital Alter-Ego" that represents Daniel's technical persona, protects focus, and captures high-value opportunities with 24/7 reliability.
 
-### Phase 1: The Intelligent Brain 
-* **Skill Showcase**: Agentic Tool Use & Prompt Engineering.
-* **Core Logic**: Implementing a "Missing Info Protocol." Instead of hallucinating, the agent uses a `LeadCaptureTool` to bridge unknown queries to a real-world notification via SendGrid.
-* **Stack**: OpenAI Agents SDK, Pydantic (Structured Outputs), SendGrid API.
+## Current State (shipped)
 
-### Phase 2: The Multi-Agent Orchestration 
-* **Skill Showcase**: Multi-Agent Systems & State Management.
-* **Architecture**: Transitioning to a "Collaborative Crew" using **CrewAI**. 
-    - **The Researcher**: A specialist agent that performs deep RAG (Retrieval-Augmented Generation) over my GitHub and technical papers.
-    - **The Representative**: A persona-focused agent that manages tone and call-to-actions.
-* **Key Upgrade**: Implementing persistent conversation memory using a relational and vectoral DB backend.
+The production app is live as a **Next.js frontend + FastAPI/LangGraph backend**, deployed on Vercel.
 
-### Phase 3: The Production Ecosystem 
-* **Skill Showcase**: AI Engineering & Full-Stack Deployment.
-* **Architecture**: Wrapping the core engine in a **FastAPI** REST interface.
-* **Deployment**: Moving to **HuggingFace Spaces** with a dedicated **Gradio** or React frontend.
-* **Advanced Feature**: Implementing **MCP (Model Context Protocol)** to allow the bot to provide real-time updates on my latest code commits from GitHub.
+| Feature | Implementation |
+|---------|----------------|
+| Persona & knowledge | `knowledge/` directory (CV, bio, FAQs) loaded at startup |
+| Chat agent | LangGraph react agent with OpenAI `gpt-4o-mini` |
+| Missing-info protocol | Collect name + email → notify Daniel on **Twilio WhatsApp** |
+| Frontend | Portfolio home, chat, resume viewer, contact form |
+| Conversation memory | Browser `localStorage` + full history sent to API |
 
-### Architecture Overview
-![Full Stack Architecture](Full_Stack_Architecture.png)
+### Architecture
 
-## 🎓 Personal Learning Outcomes
-This project serves as a practical sandbox for mastering advanced AI engineering concepts. My goal is to bridge theoretical computer science from Columbia University with applied agentic development.
+![Full Stack Architecture](images/Full_Stack_Architecture.png)
 
-* **Mastery of Agentic Orchestration**: Transitioning from linear LLM calls to autonomous loops using the OpenAI Agents SDK and CrewAI.
-* **Production-Grade Tooling**: Designing and deploying custom tools using Pydantic for strict schema validation and SendGrid for real-world side effects.
-* **Architectural Fluency**: Designing "Multi-Agent" systems where specialized roles (Researcher vs. Representative) collaborate to reduce hallucinations.
-* **Security-First AI Engineering**: Applying concepts from my ML Security background to implement prompt guardrails and protect the agent’s knowledge base.
-* **Full-Stack AI Deployment**: Bridging the gap between a Python backend (FastAPI) and a user-facing interface (Gradio/Next.js).
-* **Observability & Debugging**: Utilizing Tracing and Chain-of-Thought (CoT) logging to inspect and refine the agent’s reasoning steps.
+## Roadmap
 
-## 🛡️ Engineering Principles
-1.  **Safety First**: Implementing a "Prompt Firewall" to prevent injection attacks and ensure professional alignment (ML Security focus).
-2.  **Grounded Truth**: No hallucinations. If the agent isn't 100% sure of a fact, it refers the user to a "human-in-the-loop" contact tool.
-3.  **Observability**: Full tracing using the OpenAI `Trace` class to monitor agent reasoning and improve Chain-of-Thought (CoT) over time.
-4.  **Data Collecting**: Extensive data collection to be used for trends and intrest areas.
+### Phase 1 — Intelligent Brain ✅
+- Agentic tool use with LangGraph
+- Grounded answers from `knowledge/`; no hallucination on unknowns
+- Real-world lead capture via WhatsApp
+
+### Phase 2 — Deeper retrieval (future)
+- RAG over GitHub repos and technical papers
+- Persistent conversation memory (database)
+- Specialist sub-agents for research vs. representation
+
+### Phase 3 — Production ecosystem (partial ✅)
+- FastAPI REST + SSE streaming ✅
+- Next.js frontend ✅
+- Future: MCP integration for live GitHub activity, analytics on visitor questions
+
+## Engineering Principles
+
+1. **Grounded truth** — If not sure, escalate to Daniel; never invent salary, private, or unverified details.
+2. **Safety first** — Prompt guardrails; ML Security background applied to agent design.
+3. **Simplicity** — One LLM, one WhatsApp tool, one deterministic handoff hook for reliable lead capture.
+4. **Observability** — Health checks, test endpoints, clear error messages for deployment debugging.
+
+## About Daniel
+
+Columbia University graduate (B.A. Computer Science, May 2026). Former ML Engineer at Rhino Federated Computing. Focus areas: Federated Learning, ML Security, agentic AI, production ML pipelines. Currently open to full-time ML/AI engineering roles.
 
 ---
+
 *Developed as part of the 2026 AI Agentic Workflow Specialization.*

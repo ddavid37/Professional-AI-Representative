@@ -1,53 +1,94 @@
----
-title: Daniels_Proffesional_Chat
-app_file: app_gradio.py
-sdk: gradio
-sdk_version: 6.5.1
----
-# Professional Representative Agent (MVP)
+# Professional AI Representative
 
-Chatbot that acts as Daniel David's professional gatekeeper: represents his public persona, answers from a fixed knowledge base, and captures leads when it cannot answer (e.g. salary, private details) via SendGrid.
+Daniel David's professional AI gatekeeper — a Next.js portfolio site with a LangGraph-powered chat agent that answers from a knowledge base and notifies Daniel on WhatsApp when it cannot answer.
 
-### live Chat Example
-![Full Stack Architecture](chat1.png)
+![Chat example](images/chat1.png)
 
+## What it does
 
-![Full Stack Architecture](chat2.png)
+- **Public persona** — Answers questions about Daniel's background, skills, and projects from files in `knowledge/`.
+- **Missing-info protocol** — When unsure (salary, private details, predictions, etc.), collects name + email and notifies Daniel via **Twilio WhatsApp**.
+- **Full-stack deployment** — Next.js frontend and FastAPI backend, both deployable on Vercel.
 
+## Live stack
 
-## Setup
+| Layer | Tech |
+|-------|------|
+| Frontend | Next.js 16, Tailwind CSS |
+| Backend | FastAPI, LangGraph, LangChain OpenAI |
+| LLM | OpenAI API (`gpt-4o-mini`) |
+| Lead alerts | Twilio WhatsApp |
+| Knowledge | `knowledge/` — `.txt`, `.md`, `.pdf` loaded at startup |
 
-1. **Env**  
-   Copy `.env.example` to `.env` and set:
-   - Azure: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT_NAME`
-   - SendGrid: `SENDGRID_API_KEY`, `EMAIL_FROM` (verified sender), `EMAIL_TO` (Daniel’s inbox)
-   - **Tracing (optional):** To see traces at https://platform.openai.com/traces, add your **direct** OpenAI API key (from platform.openai.com, not Azure): `OPENAI_API_KEY=sk-...`. The chatbot still uses Azure for the LLM; this key is only used to upload trace data.
+## Quick start (local)
 
-   **Microsoft Foundry:** Use the **Foundry** endpoint, not the classic one:
-   - `AZURE_OPENAI_ENDPOINT=https://<your-resource>.services.ai.azure.com` (e.g. `https://daniel-ai-agents-resource.services.ai.azure.com`)
-   - `AZURE_OPENAI_API_VERSION=2024-10-21`
-   - In the portal: **Models + endpoints** (or **Model catalog**) → create a deployment → set `AZURE_OPENAI_DEPLOYMENT_NAME` to that deployment’s exact name.
+See **[DEVELOPER_INSTRUCTIONS.md](DEVELOPER_INSTRUCTIONS.md)** for the full guide.
 
-2. **Install**  
-   `pip install -r requirements.txt`
+```bash
+# Backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # fill in OPENAI_API_KEY and Twilio vars
+uvicorn backend.app:app --host 0.0.0.0 --port 8000
 
-3. **Run locally**  
-   From this project folder:
-   ```bash
-   python main.py
-   ```
-   Chat in the terminal. Type `exit`, `quit`, or `bye` to stop.
+# Frontend (separate terminal)
+cd frontend && npm install && npm run dev
+```
+
+Open `http://localhost:3000/chat`.
+
+## Environment variables
+
+Copy `.env.example` to `.env` at the repo root:
+
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `OPENAI_API_KEY` | Backend | LLM calls |
+| `OPENAI_MODEL` | Backend | Optional, default `gpt-4o-mini` |
+| `TWILIO_ACCOUNT_SID` | Backend | WhatsApp lead notifications |
+| `TWILIO_AUTH_TOKEN` | Backend | WhatsApp lead notifications |
+| `TWILIO_WHATSAPP_FROM` | Backend | Twilio sandbox or business sender |
+| `TWILIO_WHATSAPP_TO` | Backend | Daniel's WhatsApp number |
+| `NEXT_PUBLIC_API_URL` | Frontend | Backend URL, e.g. `http://localhost:8000` |
+
+Never commit `.env`. Never put secrets in `NEXT_PUBLIC_*`.
+
+## Project structure
+
+```
+backend/
+  app.py          FastAPI routes (/healthz, /api/chat, /api/chat/stream)
+  agent.py        LangGraph react agent + WhatsApp tool
+  whatsapp.py     Twilio send helpers
+frontend/
+  app/            Next.js pages (home, chat, resume, contact)
+  app/api/resume/ Serves CV PDF from knowledge/
+knowledge/        Agent context — resume, bio, FAQs (loaded at startup)
+custom/           Legacy Gradio + Azure OpenAI Agents SDK path (optional)
+api/index.py      Vercel serverless entry for backend deployment
+```
+
+## Deployment (production)
+
+Two **separate Vercel projects**:
+
+1. **API** — Root directory `.`, uses `vercel.json` → `api/index.py`
+   - Set all backend env vars (`OPENAI_*`, `TWILIO_*`)
+2. **Frontend** — Root directory `frontend/`
+   - Set `NEXT_PUBLIC_API_URL=https://<your-api-domain>`
+
+Verify backend: `curl https://<api-domain>/healthz`
 
 ## Knowledge directory
 
-Put anything about you in **`knowledge/`**: drop `.txt`, `.md`, or `.pdf` files (resume, bio, FAQs). The agent loads them at startup and uses that context to answer. It does not use `knowledge/README.md` (that file is only for instructions).
+Drop `.txt`, `.md`, or `.pdf` files into `knowledge/` (resume, bio, FAQs). The agent loads them at startup. `knowledge/README.md` and `knowledge/response-guidelines.md` are instructions only — not loaded as persona content.
 
-## Structure
+Current resume: `knowledge/Daniel_David_CV_May_2026_Har.pdf`
 
-- **main.py** – Entry point; wires Azure, loads `knowledge/`, runs the chat loop. Handles connection errors with a clear message.
-- **tools.py** – `LeadCapture` (Pydantic), `send_html_email` (SendGrid), `lead_capture` (@function_tool).
-- **agent_config.py** – System instructions (including content from `knowledge/`) and `create_agent()`.
-- **knowledge_loader.py** – Reads all `.txt`/`.md`/`.pdf` from `knowledge/` for the agent.
-- **azure_utils.py** – Async Azure client and `set_default_openai_api("chat_completions")` for the Agents SDK.
+## Legacy path
 
-### Architecture Overview 
+The `custom/` folder contains an earlier implementation using the OpenAI Agents SDK, Azure OpenAI, SendGrid, and Gradio (`python custom/main.py` or `custom/app_gradio.py`). The production app uses `backend/` + `frontend/` instead.
+
+## License
+
+Personal portfolio project — Daniel David.

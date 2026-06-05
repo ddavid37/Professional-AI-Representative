@@ -1,11 +1,16 @@
 # Knowledge base for the agent
 
-Drop here **.txt**, **.md**, or **.pdf** files about you (resume, bio, FAQs, projects).
+Drop **.txt**, **.md**, or **.pdf** files here (resume, bio, FAQs, project notes).
 
-Their contents are loaded into the agent's context at startup. The agent will use this information to answer questions and will not invent details that aren't here.
+Their contents are loaded into the agent's context at startup. The agent uses this information to answer questions and will not invent details that aren't here.
 
-Examples:
-- `bio.txt` – short professional bio
-- `resume.pdf` – resume or CV (PDF)
-- `resume.md` – resume in markdown
-- `faq.md` – frequently asked questions and answers
+**Not loaded as persona content:** this README and `response-guidelines.md` (instructions only).
+
+Current files:
+- `Daniel_David_CV_May_2026_Har.pdf` — latest resume/CV
+- `LinkedIn_Bio.nd` — professional bio
+- `Protfolio - Daniel David.pdf` — portfolio
+
+Examples to add:
+- `faq.md` — frequently asked questions and answers
+- `projects.md` — project write-ups

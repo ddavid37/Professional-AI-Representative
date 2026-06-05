@@ -44,7 +44,7 @@ export default function HomePage() {
 
             <p className="max-w-xl text-lg leading-relaxed text-text-secondary lg:text-xl lg:leading-relaxed">
               Columbia University graduate{" "}
-              <span className="text-text-primary">(B.S. Computer Science, May 2026)</span>.
+              <span className="text-text-primary">(B.A. Computer Science, May 2026)</span>.
               Former ML Engineer at Rhino Federated Computing. I build
               privacy-preserving AI systems, agentic workflows, and
               production-grade ML pipelines — and I'm looking for my next role.
@@ -113,7 +113,7 @@ export default function HomePage() {
               Recently graduated
             </p>
             <h2 className="font-display text-2xl text-text-primary md:text-3xl">
-              B.S. Computer Science — Columbia University
+              B.A. Computer Science — Columbia University
             </h2>
             <p className="mt-2 max-w-3xl text-base leading-relaxed text-text-secondary">
               Focused on AI/ML, distributed systems, and software engineering.
