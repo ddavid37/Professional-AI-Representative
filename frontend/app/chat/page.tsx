@@ -68,6 +68,8 @@ export default function ChatPage() {
     "checking",
   );
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -141,17 +143,13 @@ export default function ChatPage() {
       content: text.trim(),
     };
     const assistantMsgId = crypto.randomUUID();
+    const historyForBackend = [...messagesRef.current, userMsg];
 
-    let historyForBackend: Message[] = [];
-
-    setMessages((prev) => {
-      historyForBackend = [...prev, userMsg];
-      return [
-        ...prev,
-        userMsg,
-        { id: assistantMsgId, role: "assistant", content: "", streaming: true },
-      ];
-    });
+    setMessages((prev) => [
+      ...prev,
+      userMsg,
+      { id: assistantMsgId, role: "assistant", content: "", streaming: true },
+    ]);
     setInput("");
     setLoading(true);
 
