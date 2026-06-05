@@ -164,10 +164,12 @@ export default function ChatPage() {
           // accept a single-turn payload.
           message: text.trim(),
           // `messages` gives newer backends full conversation context.
-          messages: historyForBackend.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: historyForBackend
+            .filter((m) => m.content.trim().length > 0)
+            .map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
         }),
       });
 

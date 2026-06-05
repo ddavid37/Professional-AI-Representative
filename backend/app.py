@@ -28,7 +28,12 @@ from .agent import (
     initial_state_from_user_message,
     state_from_chat_history,
 )  # noqa: E402
-from .leads import append_lead_record, lead_confirmation_note, process_lead_capture
+from .leads import (
+    append_lead_record,
+    contact_info_reminder_note,
+    lead_confirmation_note,
+    process_lead_capture,
+)
 from .whatsapp import send_lead_notification, send_test_message
 
 
@@ -99,22 +104,27 @@ def _handle_lead_capture(request: ChatRequest) -> Optional[SystemMessage]:
 
     try:
         result = process_lead_capture(messages)
-        if result is None:
-            return None
+        if result is not None:
+            lead = result["lead"]
+            if not result.get("skipped"):
+                notify = send_lead_notification(
+                    name=lead.name,
+                    email=lead.email,
+                    question=lead.question,
+                )
+                whatsapp_status = notify.get("status", "error")
+                if whatsapp_status != "sent":
+                    logger.warning(
+                        "WhatsApp lead notification failed: %s", notify.get("message")
+                    )
+                append_lead_record(lead, whatsapp_status=whatsapp_status)
+            return SystemMessage(content=lead_confirmation_note(lead))
 
-        lead = result["lead"]
-        if not result.get("skipped"):
-            notify = send_lead_notification(
-                name=lead.name,
-                email=lead.email,
-                question=lead.question,
-            )
-            whatsapp_status = notify.get("status", "error")
-            if whatsapp_status != "sent":
-                logger.warning("WhatsApp lead notification failed: %s", notify.get("message"))
-            append_lead_record(lead, whatsapp_status=whatsapp_status)
+        reminder = contact_info_reminder_note(messages)
+        if reminder:
+            return SystemMessage(content=reminder)
 
-        return SystemMessage(content=lead_confirmation_note(lead))
+        return None
     except Exception:
         logger.exception("Lead capture failed")
         return None

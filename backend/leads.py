@@ -26,9 +26,12 @@ QUESTION_HINTS = (
     "would ",
     "daniel",
     "sibling",
+    "sibli",  # common typo
     "salary",
     "family",
+    "ask daniel",
 )
+AFFIRMATIVE_HINTS = ("yes", "ok", "okay", "sure", "please", "go ahead", "do it", "ask daniel")
 
 
 class ChatLike(Protocol):
@@ -67,12 +70,19 @@ def _find_email_in_history(user_contents: List[str]) -> Optional[str]:
     return None
 
 
+def _text_has_question_shape(text: str) -> bool:
+    lower = text.lower().strip()
+    if "?" in lower:
+        return True
+    return any(hint in lower for hint in QUESTION_HINTS)
+
+
 def _looks_like_name(text: str) -> bool:
     text = text.strip()
     if not text or "@" in text or "?" in text:
         return False
     lower = text.lower()
-    if any(hint in lower for hint in QUESTION_HINTS):
+    if _text_has_question_shape(text):
         return False
     words = text.split()
     return 1 <= len(words) <= 6 and len(text) < 80
@@ -80,12 +90,30 @@ def _looks_like_name(text: str) -> bool:
 
 def _line_is_question(line: str) -> bool:
     line = line.strip()
-    if not line or EMAIL_RE.search(line) or _looks_like_name(line):
+    if not line:
         return False
-    if "?" in line:
-        return True
-    lower = line.lower()
-    return any(hint in lower for hint in QUESTION_HINTS)
+    if EMAIL_RE.search(line):
+        return _question_fragment_from_mixed_line(line) is not None
+    if _looks_like_name(line):
+        return False
+    return _text_has_question_shape(line)
+
+
+def _question_fragment_from_mixed_line(text: str) -> Optional[str]:
+    """Pull the question portion out of a single line that also has name + email."""
+    match = EMAIL_RE.search(text)
+    if not match:
+        return None
+
+    after = text[match.end() :].strip(" ,.-")
+    if after and _text_has_question_shape(after):
+        return after
+
+    before = text[: match.start()].strip(" ,.-")
+    if before and _text_has_question_shape(before):
+        return before
+
+    return None
 
 
 def _question_from_message(text: str) -> Optional[str]:
@@ -93,10 +121,12 @@ def _question_from_message(text: str) -> Optional[str]:
     if len(lines) > 1:
         for line in reversed(lines):
             if _line_is_question(line):
-                return line
+                fragment = _question_fragment_from_mixed_line(line)
+                return fragment or line
         return None
+
     if _line_is_question(text):
-        return text.strip()
+        return _question_fragment_from_mixed_line(text) or text.strip()
     return None
 
 
@@ -108,7 +138,21 @@ def _extract_question(user_contents: List[str]) -> Optional[str]:
     return None
 
 
+def _name_from_mixed_line(text: str, email: str) -> Optional[str]:
+    match = EMAIL_RE.search(text)
+    if not match:
+        return None
+    before = text[: match.start()].strip(" ,.-")
+    if before and _looks_like_name(before):
+        return before
+    return None
+
+
 def _extract_name_from_contact_message(text: str, email: str) -> str:
+    mixed = _name_from_mixed_line(text, email)
+    if mixed:
+        return mixed
+
     for pattern in (
         r"(?:name|i(?:'m| am))\s*[:\s]+(.+?)(?:,|\n|$)",
         r"^(.+?)\s*,\s*" + re.escape(email),
@@ -145,15 +189,22 @@ def _find_name_in_history(user_contents: List[str], email: str) -> str:
 
 
 def conversation_has_contact_info(messages: List[ChatLike]) -> bool:
-    """True when the visitor has shared an email anywhere in the thread."""
     return _find_email_in_history(_user_contents(messages)) is not None
 
 
+def _latest_user_message(messages: List[ChatLike]) -> Optional[str]:
+    for msg in reversed(messages):
+        if msg.role == "user" and msg.content.strip():
+            return msg.content.strip()
+    return None
+
+
+def _is_affirmative_follow_up(text: str) -> bool:
+    lower = text.lower().strip()
+    return any(hint in lower for hint in AFFIRMATIVE_HINTS) and "@" not in lower
+
+
 def extract_lead_from_messages(messages: List[ChatLike]) -> Optional[LeadInfo]:
-    """
-    Build a lead when the conversation contains both an email and a substantive
-    question, even if the user sent them in separate messages.
-    """
     user_contents = _user_contents(messages)
     if not user_contents:
         return None
@@ -171,7 +222,6 @@ def extract_lead_from_messages(messages: List[ChatLike]) -> Optional[LeadInfo]:
 
 
 def lead_confirmation_note(lead: LeadInfo) -> str:
-    """System note injected so the agent confirms capture instead of re-asking."""
     return (
         "[Internal — inquiry recorded]\n"
         "Daniel was notified on WhatsApp about this visitor inquiry.\n"
@@ -179,8 +229,43 @@ def lead_confirmation_note(lead: LeadInfo) -> str:
         f"- Email: {lead.email}\n"
         f"- Question: {lead.question}\n\n"
         "Respond warmly: confirm the inquiry was recorded, restate their question, "
-        "and say Daniel will follow up personally. Do NOT ask for name or email again."
+        "and say Daniel will follow up personally. Do NOT ask for name or email again. "
+        "Do NOT offer to collect details by email — they are already on file."
     )
+
+
+def contact_info_reminder_note(messages: List[ChatLike]) -> Optional[str]:
+    """
+    When the visitor already shared an email but the latest message is just
+    'yes' / 'ask daniel', remind the model not to re-collect contact info.
+    """
+    if not conversation_has_contact_info(messages):
+        return None
+
+    latest = _latest_user_message(messages)
+    if not latest:
+        return None
+
+    question = _extract_question(_user_contents(messages))
+    email = _find_email_in_history(_user_contents(messages)) or "on file"
+
+    if question:
+        return (
+            "[Internal — contact info already provided]\n"
+            f"The visitor's email ({email}) and question are already in this thread: "
+            f"\"{question}\".\n"
+            "Confirm Daniel will follow up. Do NOT ask for name, email, or permission again."
+        )
+
+    if _is_affirmative_follow_up(latest):
+        return (
+            "[Internal — waiting for question]\n"
+            f"The visitor already agreed to follow-up and shared email ({email}).\n"
+            "Ask them to restate the specific question for Daniel, or confirm the last "
+            "topic they asked about. Do NOT restart the contact-collection flow."
+        )
+
+    return None
 
 
 def _lead_key(lead: LeadInfo) -> str:
@@ -188,7 +273,6 @@ def _lead_key(lead: LeadInfo) -> str:
 
 
 def lead_already_logged(lead: LeadInfo) -> bool:
-    """Avoid duplicate WhatsApp notifications for the same inquiry."""
     path = leads_file_path()
     if not path.is_file():
         return False
@@ -205,7 +289,6 @@ def lead_already_logged(lead: LeadInfo) -> bool:
 
 
 def append_lead_record(lead: LeadInfo, whatsapp_status: str) -> str:
-    """Append a lead line to leads/leads.txt and return the formatted line."""
     ensure_leads_dir()
     timestamp = datetime.now(timezone.utc).isoformat()
     line = (
@@ -218,10 +301,6 @@ def append_lead_record(lead: LeadInfo, whatsapp_status: str) -> str:
 
 
 def process_lead_capture(messages: List[ChatLike]) -> Optional[Dict[str, Any]]:
-    """
-    Extract a lead from the conversation and return metadata for the caller.
-    Returns None when email + question are not both present yet.
-    """
     lead = extract_lead_from_messages(messages)
     if lead is None:
         return None
