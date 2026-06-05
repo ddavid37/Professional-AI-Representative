@@ -130,12 +130,34 @@ def _question_from_message(text: str) -> Optional[str]:
     return None
 
 
+def _is_meta_clarification(text: str) -> bool:
+    """User clarifying the flow, not the actual inquiry topic."""
+    lower = text.lower()
+    meta_phrases = (
+        "after i gave",
+        "i already gave",
+        "i gave you",
+        "please ask daniel",
+        "yes,",
+        "yes ",
+        "you my name",
+        "you my email",
+    )
+    return any(phrase in lower for phrase in meta_phrases)
+
+
 def _extract_question(user_contents: List[str]) -> Optional[str]:
-    for content in reversed(user_contents):
+    candidates: List[str] = []
+    for content in user_contents:
         question = _question_from_message(content)
         if question:
+            candidates.append(question)
+
+    for question in candidates:
+        if not _is_meta_clarification(question):
             return question
-    return None
+
+    return candidates[-1] if candidates else None
 
 
 def _name_from_mixed_line(text: str, email: str) -> Optional[str]:
@@ -219,6 +241,58 @@ def extract_lead_from_messages(messages: List[ChatLike]) -> Optional[LeadInfo]:
 
     name = _find_name_in_history(user_contents, email)
     return LeadInfo(name=name, email=email, question=question)
+
+
+def user_facing_lead_confirmation(lead: LeadInfo, whatsapp_sent: bool) -> str:
+    """Deterministic reply so we never rely on the LLM to confirm capture."""
+    if whatsapp_sent:
+        notify = "Daniel has been notified on WhatsApp."
+    else:
+        notify = "Your inquiry has been logged for Daniel."
+    return (
+        f"Thank you, {lead.name}! {notify}\n\n"
+        f'Your question — "{lead.question}" — is recorded. '
+        f"He'll follow up with you at {lead.email}."
+    )
+
+
+def user_facing_collect_contact_prompt(messages: List[ChatLike]) -> Optional[str]:
+    """Deterministic reply when user said yes but has not shared email yet."""
+    if conversation_has_contact_info(messages):
+        return None
+
+    latest = _latest_user_message(messages)
+    if not latest or not _is_affirmative_follow_up(latest):
+        return None
+
+    question = _extract_question(_user_contents(messages))
+    if question:
+        return (
+            f"Happy to pass that along. Please share your **full name** and **email** "
+            f'so Daniel can follow up about: "{question}"'
+        )
+    return (
+        "Please share your **full name** and **email** so Daniel can follow up with you personally."
+    )
+
+
+def user_facing_contact_already_on_file(messages: List[ChatLike]) -> Optional[str]:
+    """Deterministic reply when email is already in the thread."""
+    if not conversation_has_contact_info(messages):
+        return None
+
+    lead = extract_lead_from_messages(messages)
+    if lead:
+        return user_facing_lead_confirmation(lead, whatsapp_sent=True)
+
+    question = _extract_question(_user_contents(messages))
+    if question:
+        email = _find_email_in_history(_user_contents(messages)) or "your email"
+        return (
+            f"I already have {email} on file for this chat. "
+            f'Your question about "{question}" will reach Daniel — no need to share details again.'
+        )
+    return None
 
 
 def lead_confirmation_note(lead: LeadInfo) -> str:
@@ -343,3 +417,36 @@ def process_lead_capture(messages: List[ChatLike]) -> Optional[Dict[str, Any]]:
         return {"lead": lead, "skipped": True, "reason": "already_logged"}
 
     return {"lead": lead, "skipped": False}
+
+
+def resolve_lead_turn(messages: List[ChatLike]) -> tuple[Optional[str], Optional[str]]:
+    """
+    Process lead capture for this turn.
+
+    Returns (direct_reply, whatsapp_status_for_logs).
+    direct_reply: if set, return this text to the user without calling the LLM.
+    """
+    result = process_lead_capture(messages)
+    if result is not None:
+        lead = result["lead"]
+        whatsapp_status = "skipped"
+        if not result.get("skipped"):
+            from .whatsapp import send_lead_notification
+
+            notify = send_lead_notification(
+                name=lead.name, email=lead.email, question=lead.question
+            )
+            whatsapp_status = notify.get("status", "error")
+            append_lead_record(lead, whatsapp_status=whatsapp_status)
+        sent = whatsapp_status == "sent"
+        return user_facing_lead_confirmation(lead, whatsapp_sent=sent), whatsapp_status
+
+    direct = user_facing_collect_contact_prompt(messages)
+    if direct:
+        return direct, None
+
+    direct = user_facing_contact_already_on_file(messages)
+    if direct:
+        return direct, None
+
+    return None, None

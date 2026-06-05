@@ -28,13 +28,8 @@ from .agent import (
     initial_state_from_user_message,
     state_from_chat_history,
 )  # noqa: E402
-from .leads import (
-    append_lead_record,
-    conversation_context_note,
-    lead_confirmation_note,
-    process_lead_capture,
-)
-from .whatsapp import send_lead_notification, send_test_message
+from .leads import conversation_context_note, resolve_lead_turn
+from .whatsapp import send_test_message
 
 
 logger = logging.getLogger(__name__)
@@ -93,47 +88,45 @@ def _conversation_messages(request: ChatRequest) -> List[ChatMessage]:
     return []
 
 
-def _handle_lead_capture(request: ChatRequest) -> Optional[SystemMessage]:
-    """
-    When a visitor shares contact details + a question, log the lead, notify
-    Daniel on WhatsApp, and return a system note so the agent confirms capture.
-    """
-    messages = _conversation_messages(request)
-    if not messages:
-        return None
-
-    try:
-        result = process_lead_capture(messages)
-        if result is not None:
-            lead = result["lead"]
-            if not result.get("skipped"):
-                notify = send_lead_notification(
-                    name=lead.name,
-                    email=lead.email,
-                    question=lead.question,
-                )
-                whatsapp_status = notify.get("status", "error")
-                if whatsapp_status != "sent":
-                    logger.warning(
-                        "WhatsApp lead notification failed: %s", notify.get("message")
-                    )
-                append_lead_record(lead, whatsapp_status=whatsapp_status)
-            return SystemMessage(content=lead_confirmation_note(lead))
-
-        reminder = conversation_context_note(messages)
-        if reminder:
-            return SystemMessage(content=reminder)
-
-        return None
-    except Exception:
-        logger.exception("Lead capture failed")
-        return None
-
-
-def _apply_lead_context(state: AgentState, note: Optional[SystemMessage]) -> AgentState:
+def _apply_context_note(state: AgentState, messages: List[ChatMessage]) -> AgentState:
+    """Fallback context injection when we still need the LLM (non-lead turns)."""
+    note = conversation_context_note(messages)
     if note is None:
         return state
-    return {**state, "messages": [*state["messages"], note]}
+    return {**state, "messages": [*state["messages"], SystemMessage(content=note)]}
+
+
+async def _sse_direct_reply(text: str) -> AsyncGenerator[str, None]:
+    """Emit a full reply as one SSE payload (no LLM call)."""
+    payload = {"type": "token", "delta": text}
+    yield f"data: {json.dumps(payload)}\n\n"
+    yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+
+async def _sse_event_stream(initial_state: AgentState) -> AsyncGenerator[str, None]:
+    """
+    Stream LangGraph events as Server-Sent Events (SSE).
+
+    We focus on `on_chat_model_stream` events to emit token deltas.
+    Errors are caught and forwarded as {"type": "error"} events so the
+    frontend can display them instead of silently showing an empty bubble.
+    """
+    try:
+        async for event in GRAPH.astream_events(initial_state, version="v2"):
+            if event.get("event") == "on_chat_model_stream":
+                chunk = event.get("data", {}).get("chunk")
+                if not chunk:
+                    continue
+                delta = chunk.content
+                if not delta:
+                    continue
+                payload = {"type": "token", "delta": delta}
+                yield f"data: {json.dumps(payload)}\n\n"
+    except Exception as exc:
+        error_payload = {"type": "error", "message": str(exc)}
+        yield f"data: {json.dumps(error_payload)}\n\n"
+
+    yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
 
 @app.get("/healthz", tags=["meta"])
@@ -160,9 +153,6 @@ async def chat(request: ChatRequest) -> ChatResponse:
     Non-streaming chat endpoint.
 
     Useful for quick testing or environments where SSE is inconvenient.
-
-    If `messages` is provided, we treat it as the full chat history (including
-    the latest user turn). Otherwise we fall back to a single-turn `message`.
     """
     if request.messages:
         history_payload = [m.model_dump() for m in request.messages]
@@ -175,8 +165,17 @@ async def chat(request: ChatRequest) -> ChatResponse:
             detail="Either `message` or `messages` must be provided.",
         )
 
-    lead_note = _handle_lead_capture(request)
-    state = _apply_lead_context(state, lead_note)
+    messages = _conversation_messages(request)
+    try:
+        direct_reply, _ = resolve_lead_turn(messages)
+    except Exception:
+        logger.exception("Lead capture failed")
+        direct_reply = None
+
+    if direct_reply:
+        return ChatResponse(response=direct_reply, leads=[])
+
+    state = _apply_context_note(state, messages)
     final_state: AgentState = GRAPH.invoke(state)
 
     ai_messages = [m for m in final_state["messages"] if isinstance(m, AIMessage)]
@@ -189,45 +188,13 @@ async def chat(request: ChatRequest) -> ChatResponse:
     )
 
 
-async def _sse_event_stream(initial_state: AgentState) -> AsyncGenerator[str, None]:
-    """
-    Stream LangGraph events as Server-Sent Events (SSE).
-
-    We focus on `on_chat_model_stream` events to emit token deltas.
-    Errors are caught and forwarded as {"type": "error"} events so the
-    frontend can display them instead of silently showing an empty bubble.
-    """
-    try:
-        async for event in GRAPH.astream_events(initial_state, version="v2"):
-            if event.get("event") == "on_chat_model_stream":
-                chunk = event.get("data", {}).get("chunk")
-                if not chunk:
-                    continue
-                delta = chunk.content
-                if not delta:
-                    continue
-                payload = {"type": "token", "delta": delta}
-                yield f"data: {json.dumps(payload)}\n\n"
-    except Exception as exc:
-        error_payload = {"type": "error", "message": str(exc)}
-        yield f"data: {json.dumps(error_payload)}\n\n"
-
-    # Signal completion to the client
-    yield f"data: {json.dumps({'type': 'done'})}\n\n"
-
-
 @app.post("/api/chat/stream", tags=["chat"])
 async def chat_stream(request: ChatRequest) -> StreamingResponse:
     """
     Streaming chat endpoint (SSE).
 
-    The frontend should connect with EventSource or fetch/ReadableStream:
-      - URL: POST /api/chat/stream
-      - Response: text/event-stream
-      - Events: {"type": "token", "delta": "..."} and a final {"type": "done"}.
-
-    If `messages` is provided, we treat it as the full chat history (including
-    the latest user turn). Otherwise we fall back to a single-turn `message`.
+    Lead capture turns return a fixed confirmation without calling the LLM,
+    so the agent cannot ignore instructions or loop on contact collection.
     """
     if request.messages:
         history_payload = [m.model_dump() for m in request.messages]
@@ -240,8 +207,20 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             detail="Either `message` or `messages` must be provided.",
         )
 
-    lead_note = _handle_lead_capture(request)
-    state = _apply_lead_context(state, lead_note)
+    messages = _conversation_messages(request)
+    try:
+        direct_reply, _ = resolve_lead_turn(messages)
+    except Exception:
+        logger.exception("Lead capture failed")
+        direct_reply = None
+
+    if direct_reply:
+        return StreamingResponse(
+            _sse_direct_reply(direct_reply),
+            media_type="text/event-stream",
+        )
+
+    state = _apply_context_note(state, messages)
     return StreamingResponse(
         _sse_event_stream(state),
         media_type="text/event-stream",
@@ -249,15 +228,10 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
 
 
 # ----- Static frontend (Next.js build) -----
-# For HF Spaces, we'll serve the compiled Next.js app (when present) as static files.
-# This assumes a future build step that outputs to `frontend/out` (next export)
-# or a similar directory. We guard on existence so local dev doesn't break.
 FRONTEND_BUILD_DIR = PROJECT_ROOT / "frontend" / "out"
 if FRONTEND_BUILD_DIR.is_dir():
-    # Serve the static frontend at the root path.
     app.mount(
         "/",
         StaticFiles(directory=FRONTEND_BUILD_DIR, html=True),
         name="frontend",
     )
-
