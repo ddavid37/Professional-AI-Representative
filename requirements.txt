@@ -4,6 +4,7 @@ pydantic>=2.0.0
 pypdf>=4.0.0
 python-dotenv>=1.0.0
 sendgrid>=6.0.0
+twilio>=9.0.0
 gradio>=6.0.0
 
 # --- LangGraph / FastAPI backend ---
