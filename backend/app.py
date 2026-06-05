@@ -55,24 +55,33 @@ class ChatResponse(BaseModel):
 
 
 def _last_ai_text(messages: List[Any]) -> str:
+    """Return the last assistant message that has visible text content."""
     for msg in reversed(messages):
-        if isinstance(msg, AIMessage) and msg.content:
-            return msg.content if isinstance(msg.content, str) else str(msg.content)
+        if not isinstance(msg, AIMessage):
+            continue
+        content = msg.content
+        if isinstance(content, str) and content.strip():
+            return content
+        if isinstance(content, list):
+            parts = [p.get("text", "") for p in content if isinstance(p, dict) and p.get("text")]
+            joined = "".join(parts).strip()
+            if joined:
+                return joined
     return ""
 
 
 async def _sse_event_stream(initial_state: Dict[str, Any]) -> AsyncGenerator[str, None]:
+    """
+    Run the full agent (including tool calls), then send the final reply.
+    Streaming partial tokens broke the flow: users saw the first LLM reply before
+    notify_daniel_on_whatsapp ran, and that wrong text was saved as history.
+    """
     try:
-        async for event in GRAPH.astream_events(initial_state, version="v2"):
-            if event.get("event") == "on_chat_model_stream":
-                chunk = event.get("data", {}).get("chunk")
-                if not chunk:
-                    continue
-                delta = chunk.content
-                if not delta:
-                    continue
-                payload = {"type": "token", "delta": delta}
-                yield f"data: {json.dumps(payload)}\n\n"
+        final_state = await GRAPH.ainvoke(initial_state)
+        text = _last_ai_text(final_state["messages"])
+        if text:
+            payload = {"type": "token", "delta": text}
+            yield f"data: {json.dumps(payload)}\n\n"
     except Exception as exc:
         yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
 

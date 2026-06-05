@@ -30,7 +30,7 @@ def send_lead_notification(name: str, email: str, question: str) -> Dict[str, An
     if not account_sid or not auth_token:
         return {
             "status": "error",
-            "message": "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set in .env",
+            "message": "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set (local .env or Vercel env vars on the API project).",
         }
 
     body = (

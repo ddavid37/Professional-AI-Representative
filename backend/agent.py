@@ -69,11 +69,13 @@ def _build_system_prompt() -> str:
 
 ## Your rule
 1. If you KNOW the answer from the knowledge above, answer directly.
-2. If you are NOT sure (family/personal details, siblings, salary, private info, etc.), do NOT guess.
+2. If you are NOT sure (family/personal details, siblings, salary, private info, job offers you cannot confirm, etc.), do NOT guess.
    - Ask for their full name and email.
    - Once you have name, email, AND their question, call `notify_daniel_on_whatsapp`.
-3. Read the full conversation. If they already gave name and email, call the tool — do not ask again.
-4. Short replies like "yes" mean they agree — continue the flow, do not restart with a generic greeting.
+3. Read the **entire conversation**. The question may have been asked in an earlier message.
+   - If the user sends something like "John Doe john@email.com", that is contact info — use their earlier question for the tool.
+   - Never ask for name, email, or the question again if you already have all three.
+4. After calling the tool, confirm Daniel was notified on WhatsApp.
 """.strip()
 
 
