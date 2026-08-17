@@ -22,6 +22,7 @@ from .agent import (
     initial_state_from_user_message,
     state_from_chat_history,
 )
+from .knowledge_audit import read_recent_events, reload_knowledge_audit
 from .whatsapp import send_lead_notification, send_test_message
 
 
@@ -140,6 +141,29 @@ async def _sse_event_stream(initial_state: Dict[str, Any]) -> AsyncGenerator[str
 @app.get("/healthz", tags=["meta"])
 async def healthz() -> Dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/knowledge/audit", tags=["meta"])
+async def knowledge_audit_status() -> Dict[str, Any]:
+    knowledge_dir = PROJECT_ROOT / "knowledge"
+    state_path = knowledge_dir / ".audit" / "state.json"
+    state: Dict[str, Any] = {}
+    if state_path.is_file():
+        try:
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            state = {}
+    return {
+        "state": state,
+        "recent_events": read_recent_events(knowledge_dir, limit=20),
+    }
+
+
+@app.post("/api/knowledge/reload", tags=["meta"])
+async def knowledge_reload() -> Dict[str, Any]:
+    knowledge_dir = PROJECT_ROOT / "knowledge"
+    summary = reload_knowledge_audit(knowledge_dir)
+    return {"status": "reloaded", "summary": summary}
 
 
 @app.post("/api/test/whatsapp", tags=["meta"])

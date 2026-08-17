@@ -105,7 +105,9 @@ URLs:
 | Backend code or `OPENAI_*` / `TWILIO_*` / `TAVILY_*` env | Restart Terminal A |
 | Frontend code | Hot-reloads automatically |
 | `NEXT_PUBLIC_*` env | Restart Terminal B (local) or redeploy frontend (Vercel) |
-| Files in `knowledge/` | Restart backend (content loaded at startup) |
+| Files in `knowledge/` | Restart backend (content loaded at startup; audit runs automatically) |
+
+Knowledge changes are tracked in `knowledge/.audit/` (`state.json` + append-only `events.jsonl`). Version snapshots live in `knowledge/.audit/versions/` (gitignored). Inspect via `GET /api/knowledge/audit` or trigger `POST /api/knowledge/reload`.
 
 ---
 

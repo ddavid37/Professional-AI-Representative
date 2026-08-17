@@ -47,3 +47,9 @@ desktop.ini
 *.sln
 .vercel
 leads/
+
+# Knowledge audit snapshots (metadata + events are tracked; binaries stay local)
+knowledge/.audit/versions/
+
+
+.cursor

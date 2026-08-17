@@ -27,6 +27,7 @@ from custom.knowledge_loader import (
     get_project_dir,
     load_knowledge_dir,
 )
+from .knowledge_audit import sync_knowledge_audit
 from .search import search_web as tavily_search
 from .whatsapp import send_lead_notification
 
@@ -87,6 +88,7 @@ def notify_daniel_on_whatsapp(name: str, email: str, question: str) -> str:
 def _build_system_prompt() -> str:
     project_dir = get_project_dir()
     knowledge_dir = project_dir / KNOWLEDGE_DIR_NAME
+    sync_knowledge_audit(knowledge_dir)
     knowledge_text = load_knowledge_dir(knowledge_dir).strip()
     persona_section = knowledge_text if knowledge_text else _DEFAULT_BIO
 
