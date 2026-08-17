@@ -9,6 +9,7 @@ This guide covers local development and production deployment for the current st
 - `npm` and `pip`
 - OpenAI API key
 - Twilio account with WhatsApp sandbox (or business number) for lead notifications
+- Tavily API key for web search (optional locally; required for internet retrieval)
 
 ## 2) One-time setup
 
@@ -42,6 +43,9 @@ TWILIO_ACCOUNT_SID=AC...
 TWILIO_AUTH_TOKEN=...
 TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 TWILIO_WHATSAPP_TO=whatsapp:+972XXXXXXXXX
+
+# Tavily web search — public / current facts
+TAVILY_API_KEY=tvly-...
 
 # Frontend (public — baked in at build time on Vercel)
 NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -98,7 +102,7 @@ URLs:
 
 | Change | Action |
 |--------|--------|
-| Backend code or `OPENAI_*` / `TWILIO_*` env | Restart Terminal A |
+| Backend code or `OPENAI_*` / `TWILIO_*` / `TAVILY_*` env | Restart Terminal A |
 | Frontend code | Hot-reloads automatically |
 | `NEXT_PUBLIC_*` env | Restart Terminal B (local) or redeploy frontend (Vercel) |
 | Files in `knowledge/` | Restart backend (content loaded at startup) |
@@ -113,6 +117,7 @@ URLs:
 - **`address already in use` on :8000** — `lsof -ti :8000 | xargs kill`
 - **Chat errors / 500** — Check `OPENAI_API_KEY` and OpenAI billing/quota
 - **WhatsApp not sending** — Verify all four `TWILIO_*` vars; test with `/api/test/whatsapp`
+- **Web search fails** — Verify `TAVILY_API_KEY` (no spaces around `=`)
 - **Agent gives stale bio** — Restart backend after updating `knowledge/` files
 
 ### Frontend
@@ -131,7 +136,7 @@ Use **two separate Vercel projects** from the same GitHub repo.
 
 - **Root directory:** `.` (repo root)
 - **Framework:** Other (Python via `api/index.py` + root `vercel.json`)
-- **Env vars:** `OPENAI_API_KEY`, `OPENAI_MODEL`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO`
+- **Env vars:** `OPENAI_API_KEY`, `OPENAI_MODEL`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO`, `TAVILY_API_KEY`
 - **Verify:** `https://<api-domain>/healthz`
 
 Example production API: `https://professional-ai-representative-api.vercel.app`
@@ -161,13 +166,15 @@ Browser → Next.js (frontend/) → FastAPI (backend/app.py)
                                     ↓
                          knowledge/ + OpenAI gpt-4o-mini
                                     ↓
-                         Twilio WhatsApp (unknown questions)
+                         Tavily (public / current facts)
+                         Twilio WhatsApp (unknown Daniel facts)
 ```
 
 Lead capture flow:
-1. User asks something not in knowledge → agent asks for name + email
-2. User provides contact info → `_maybe_whatsapp_reply` in `app.py` sends WhatsApp immediately when full conversation history is present
-3. Agent tool `notify_daniel_on_whatsapp` is a fallback for the same path
+1. User asks something not in knowledge → if it is public/current, agent calls `search_web` (Tavily)
+2. If it is personal/unknown about Daniel → agent asks for name + email
+3. User provides contact info → `_maybe_whatsapp_reply` in `app.py` sends WhatsApp immediately when full conversation history is present
+4. Agent tool `notify_daniel_on_whatsapp` is a fallback for the same path
 
 ---
 

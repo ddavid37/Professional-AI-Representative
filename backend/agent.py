@@ -2,7 +2,8 @@
 LangGraph agent for Daniel's AI representative.
 
 Simple design:
-- Answer from knowledge/ when confident.
+- Answer from knowledge/ when confident about Daniel.
+- Search the public web with Tavily for current / general facts.
 - Otherwise collect name + email and call notify_daniel_on_whatsapp.
 """
 
@@ -26,6 +27,7 @@ from custom.knowledge_loader import (
     get_project_dir,
     load_knowledge_dir,
 )
+from .search import search_web as tavily_search
 from .whatsapp import send_lead_notification
 
 
@@ -43,6 +45,31 @@ Daniel David is a Columbia University graduate (B.A. Computer Science, May 2026)
 His work focuses on ML Security, Federated Learning, and NVFlare. He is currently open to full-time ML/AI roles.
 He is professional, approachable, and witty.
 """.strip()
+
+
+@tool
+def search_web(query: str) -> str:
+    """
+    Search the public internet for current events, companies, sports, news, or
+    other general facts that are not about Daniel's private life.
+    Use this when the answer is not in the knowledge about Daniel.
+    """
+    result = tavily_search(query)
+    if result.get("status") != "ok":
+        return f"Web search failed: {result.get('message', 'unknown error')}"
+
+    lines: List[str] = []
+    answer = (result.get("answer") or "").strip()
+    if answer:
+        lines.append(f"Summary: {answer}")
+
+    for item in result.get("results") or []:
+        title = item.get("title") or "Source"
+        url = item.get("url") or ""
+        content = item.get("content") or ""
+        lines.append(f"- {title} ({url}): {content}")
+
+    return "\n".join(lines) if lines else "No web results found."
 
 
 @tool
@@ -73,25 +100,26 @@ def _build_system_prompt() -> str:
 - Match the user's energy when appropriate; a little personality is fine if it stays accurate and respectful.
 
 ## Your rules
-1. If you KNOW the answer from the knowledge above, answer directly.
-2. If you are NOT sure (family/personal details, siblings, salary, private info, job offers you cannot confirm, etc.), do NOT guess.
+1. If you KNOW the answer from the knowledge above (Daniel's bio, skills, career, Starbridge preference), answer directly. Do not search the web for facts already in knowledge.
+2. If the question is about **public / current information** (news, companies, sports, definitions, events, people who are not Daniel), call `search_web` and answer from those results. Briefly cite sources when useful.
+3. If you are NOT sure about **Daniel personally** (family, salary, private info, unconfirmed job offers, etc.), do NOT guess and do NOT search the web for that.
    - Ask for their full name and email.
    - Once you have name, email, AND their question, call `notify_daniel_on_whatsapp`.
-3. Read the **entire conversation**. The question may have been asked in an earlier message.
+4. Read the **entire conversation**. The question may have been asked in an earlier message.
    - If the user sends something like "John Doe john@email.com", that is contact info — use their earlier question for the tool.
    - Never ask for name, email, or the question again if you already have all three.
-4. After calling the tool, confirm Daniel was notified on WhatsApp.
-5. **Dream company (Starbridge) — two chunks:**
+5. After calling the WhatsApp tool, confirm Daniel was notified on WhatsApp.
+6. **Dream company (Starbridge) — two chunks:**
    - If asked Daniel's dream/top-choice company (without asking why): answer in **one short sentence** only, e.g. "Daniel's dream company is Starbridge." Do not explain why unless asked.
    - If asked why (including "Why?" as a follow-up): give the reason — product vision, CEO Justin Wenig, unapologetic vision and execution. Do not repeat the one-liner unless helpful.
-6. Do not mention Starbridge unprompted unless the chat is about careers or job search.
+7. Do not mention Starbridge unprompted unless the chat is about careers or job search.
 """.strip()
 
 
 def build_agent_graph():
     return create_react_agent(
         _get_chat_model(),
-        [notify_daniel_on_whatsapp],
+        [search_web, notify_daniel_on_whatsapp],
         prompt=_build_system_prompt(),
     )
 

@@ -44,10 +44,11 @@ export default function HomePage() {
 
             <p className="max-w-xl text-lg leading-relaxed text-text-secondary lg:text-xl lg:leading-relaxed">
               Columbia University graduate{" "}
-              <span className="text-text-primary">(B.A. Computer Science, May 2026)</span>.
-              Former ML Engineer at Rhino Federated Computing. I build
-              privacy-preserving AI systems, agentic workflows, and
-              production-grade ML pipelines — and I'm looking for my next role.
+              <span className="text-text-primary">(B.A. Computer Science)</span>
+              <br />
+              ML/AI FDE intern, Rhino Federated Computing
+              <br />
+              TA, ML/AI Security class
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-1">

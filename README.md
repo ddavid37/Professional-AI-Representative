@@ -1,13 +1,14 @@
 # Professional AI Representative
 
-Daniel David's professional AI gatekeeper — a Next.js portfolio site with a LangGraph-powered chat agent that answers from a knowledge base and notifies Daniel on WhatsApp when it cannot answer.
+Daniel David's professional AI gatekeeper — a Next.js portfolio site with a LangGraph-powered chat agent that answers from a knowledge base, searches the public web with Tavily, and notifies Daniel on WhatsApp when it cannot answer.
 
 ![Chat example](images/chat1.png)
 
 ## What it does
 
 - **Public persona** — Answers questions about Daniel's background, skills, and projects from files in `knowledge/`.
-- **Missing-info protocol** — When unsure (salary, private details, predictions, etc.), collects name + email and notifies Daniel via **Twilio WhatsApp**.
+- **Web retrieval** — Uses **Tavily** to search the public internet for current events and general facts.
+- **Missing-info protocol** — When unsure about Daniel personally (salary, private details, etc.), collects name + email and notifies Daniel via **Twilio WhatsApp**.
 - **Full-stack deployment** — Next.js frontend and FastAPI backend, both deployable on Vercel.
 
 ## Live stack
@@ -17,6 +18,7 @@ Daniel David's professional AI gatekeeper — a Next.js portfolio site with a La
 | Frontend | Next.js 16, Tailwind CSS |
 | Backend | FastAPI, LangGraph, LangChain OpenAI |
 | LLM | OpenAI API (`gpt-4o-mini`) |
+| Web search | Tavily |
 | Lead alerts | Twilio WhatsApp |
 | Knowledge | `knowledge/` — `.txt`, `.md`, `.pdf` loaded at startup |
 
@@ -44,12 +46,14 @@ flowchart TB
         Routes["/healthz · /api/chat · /api/chat/stream"]
         Handoff["_maybe_whatsapp_reply<br/>(deterministic handoff)"]
         Agent["LangGraph ReAct Agent"]
+        SearchTool["Tool: search_web"]
         Tool["Tool: notify_daniel_on_whatsapp"]
         Loader["knowledge_loader + PyPDF"]
     end
 
     subgraph External["External Services"]
         OpenAI["OpenAI API<br/>gpt-4o-mini"]
+        Tavily["Tavily Search"]
         Twilio["Twilio WhatsApp"]
         Daniel["Daniel's phone"]
     end
@@ -70,6 +74,8 @@ flowchart TB
     Handoff -->|"name + email + prior question"| Twilio
     Routes --> Agent
     Agent --> OpenAI
+    Agent --> SearchTool
+    SearchTool --> Tavily
     Agent --> Tool
     Tool --> Twilio
     Loader --> Knowledge
@@ -103,9 +109,12 @@ flowchart TB
         direction TB
         SP["System prompt (fixed at startup)<br/>• Rules<br/>• knowledge/ PDFs & text"]
         LLM["GPT-4o-mini"]
+        SearchTool["Tool: search_web"]
         Tool["Tool: notify_daniel_on_whatsapp"]
         SP --> LLM
         ChatMsgs --> LLM
+        LLM -->|"public / current facts"| SearchTool
+        SearchTool --> Tavily["Tavily Search"]
         LLM -->|"if unsure + has name/email/question"| Tool
         Tool --> Twilio["Twilio WhatsApp → Daniel"]
         LLM --> Reply["Final assistant reply"]
@@ -165,7 +174,7 @@ See **[DEVELOPER_INSTRUCTIONS.md](DEVELOPER_INSTRUCTIONS.md)** for the full guid
 # Backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # fill in OPENAI_API_KEY and Twilio vars
+cp .env.example .env   # fill in OPENAI_API_KEY, Twilio, and Tavily vars
 uvicorn backend.app:app --host 0.0.0.0 --port 8000
 
 # Frontend (separate terminal)
@@ -186,6 +195,7 @@ Copy `.env.example` to `.env` at the repo root:
 | `TWILIO_AUTH_TOKEN` | Backend | WhatsApp lead notifications |
 | `TWILIO_WHATSAPP_FROM` | Backend | Twilio sandbox or business sender |
 | `TWILIO_WHATSAPP_TO` | Backend | Daniel's WhatsApp number |
+| `TAVILY_API_KEY` | Backend | Public web search |
 | `NEXT_PUBLIC_API_URL` | Frontend | Backend URL, e.g. `http://localhost:8000` |
 
 Never commit `.env`. Never put secrets in `NEXT_PUBLIC_*`.
@@ -195,8 +205,9 @@ Never commit `.env`. Never put secrets in `NEXT_PUBLIC_*`.
 ```
 backend/
   app.py          FastAPI routes (/healthz, /api/chat, /api/chat/stream)
-  agent.py        LangGraph react agent + WhatsApp tool
+  agent.py        LangGraph react agent + WhatsApp + Tavily tools
   whatsapp.py     Twilio send helpers
+  search.py       Tavily web search helper
 frontend/
   app/            Next.js pages (home, chat, resume, contact)
   app/api/resume/ Serves CV PDF from knowledge/
@@ -210,7 +221,7 @@ api/index.py      Vercel serverless entry for backend deployment
 Two **separate Vercel projects**:
 
 1. **API** — Root directory `.`, uses `vercel.json` → `api/index.py`
-   - Set all backend env vars (`OPENAI_*`, `TWILIO_*`)
+   - Set all backend env vars (`OPENAI_*`, `TWILIO_*`, `TAVILY_API_KEY`)
 2. **Frontend** — Root directory `frontend/`
    - Set `NEXT_PUBLIC_API_URL=https://<your-api-domain>`
 
