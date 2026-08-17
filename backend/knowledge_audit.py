@@ -88,6 +88,47 @@ def _git_head(project_dir: Path) -> Optional[str]:
         return None
 
 
+def _git_log_field(project_dir: Path, rel_path: str, revision: str, field: str) -> Optional[str]:
+    try:
+        result = subprocess.run(
+            ["git", "log", revision, "-1", f"--format={field}", "--", rel_path],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        )
+        value = result.stdout.strip()
+        return value or None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _file_provenance(path: Path, project_dir: Path, knowledge_dir: Path) -> Dict[str, Any]:
+    rel_path = path.relative_to(project_dir).as_posix()
+    file_modified_at: Optional[str] = None
+    try:
+        mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+        file_modified_at = mtime.isoformat()
+    except OSError:
+        pass
+
+    git_added_at = _git_log_field(project_dir, rel_path, "--diff-filter=A", "%aI")
+    git_last_committed_at = _git_log_field(project_dir, rel_path, "-1", "%aI")
+    git_last_commit = _git_log_field(project_dir, rel_path, "-1", "%H")
+
+    return {
+        "file_modified_at": file_modified_at,
+        "git_added_at": git_added_at,
+        "git_last_committed_at": git_last_committed_at,
+        "git_last_commit": git_last_commit,
+    }
+
+
+def _enrich_source_record(record: Dict[str, Any], path: Path, project_dir: Path, knowledge_dir: Path) -> Dict[str, Any]:
+    return {**record, **_file_provenance(path, project_dir, knowledge_dir)}
+
+
 def _load_state(knowledge_dir: Path) -> Dict[str, Any]:
     path = _state_path(knowledge_dir)
     if not path.is_file():
@@ -180,14 +221,19 @@ def sync_knowledge_audit(knowledge_dir: Optional[Path] = None) -> Dict[str, Any]
 
         if prev is None:
             version = 1
-            new_sources[identity] = {
-                "identity": identity,
-                "content_hash": content_hash,
-                "version": version,
-                "updated_at": _utc_now(),
-                "byte_size": byte_size,
-                "status": "current",
-            }
+            new_sources[identity] = _enrich_source_record(
+                {
+                    "identity": identity,
+                    "content_hash": content_hash,
+                    "version": version,
+                    "audited_at": _utc_now(),
+                    "byte_size": byte_size,
+                    "status": "current",
+                },
+                path,
+                project_dir,
+                knowledge_dir,
+            )
             summary["discovered"].append(identity)
             _append_event(
                 knowledge_dir,
@@ -204,7 +250,10 @@ def sync_knowledge_audit(knowledge_dir: Optional[Path] = None) -> Dict[str, Any]
             continue
 
         if prev.get("content_hash") == content_hash:
-            new_sources[identity] = {**prev, "status": "current", "byte_size": byte_size}
+            record = {**prev, "status": "current", "byte_size": byte_size}
+            if "audited_at" not in record and record.get("updated_at"):
+                record["audited_at"] = record["updated_at"]
+            new_sources[identity] = _enrich_source_record(record, path, project_dir, knowledge_dir)
             summary["unchanged"].append(identity)
             version = int(prev.get("version") or 1)
             snap = _version_snapshot_path(
@@ -221,15 +270,20 @@ def sync_knowledge_audit(knowledge_dir: Optional[Path] = None) -> Dict[str, Any]
         archive_available = old_snapshot.is_file()
 
         version = old_version + 1
-        new_sources[identity] = {
-            "identity": identity,
-            "content_hash": content_hash,
-            "version": version,
-            "updated_at": _utc_now(),
-            "byte_size": byte_size,
-            "status": "current",
-            "previous_hash": prev.get("content_hash"),
-        }
+        new_sources[identity] = _enrich_source_record(
+            {
+                "identity": identity,
+                "content_hash": content_hash,
+                "version": version,
+                "audited_at": _utc_now(),
+                "byte_size": byte_size,
+                "status": "current",
+                "previous_hash": prev.get("content_hash"),
+            },
+            path,
+            project_dir,
+            knowledge_dir,
+        )
         summary["updated"].append(identity)
         _append_event(
             knowledge_dir,
@@ -309,6 +363,13 @@ def reload_knowledge_audit(knowledge_dir: Optional[Path] = None) -> Dict[str, An
 
 
 def read_recent_events(knowledge_dir: Optional[Path] = None, limit: int = 20) -> List[Dict[str, Any]]:
+    events = read_all_events(knowledge_dir)
+    if limit <= 0:
+        return events
+    return events[-limit:]
+
+
+def read_all_events(knowledge_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     if knowledge_dir is None:
         knowledge_dir = get_project_dir() / KNOWLEDGE_DIR_NAME
     path = _events_path(knowledge_dir)
@@ -319,7 +380,7 @@ def read_recent_events(knowledge_dir: Optional[Path] = None, limit: int = 20) ->
     except OSError:
         return []
     events: List[Dict[str, Any]] = []
-    for line in lines[-limit:]:
+    for line in lines:
         line = line.strip()
         if not line:
             continue

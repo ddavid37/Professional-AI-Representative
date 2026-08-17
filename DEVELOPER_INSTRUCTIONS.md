@@ -109,6 +109,14 @@ URLs:
 
 Knowledge changes are tracked in `knowledge/.audit/` (`state.json` + append-only `events.jsonl`). Version snapshots live in `knowledge/.audit/versions/` (gitignored). Inspect via `GET /api/knowledge/audit` or trigger `POST /api/knowledge/reload`.
 
+### Developer panel (`/dev`)
+
+Unlisted UI at `http://localhost:3000/dev` (not in public nav). Shows env var names (configured/missing), local + Vercel health, knowledge sources, and full audit log.
+
+- Set `DEV_PANEL_SECRET` on the **API** project (required in production).
+- Optional on **frontend** for Vercel health tiles: `NEXT_PUBLIC_PRODUCTION_API_URL`, `NEXT_PUBLIC_PRODUCTION_FRONTEND_URL`.
+- Unlock once per browser session; secret is sent as `X-Dev-Panel-Secret` header.
+
 ---
 
 ## 6) Troubleshooting
@@ -138,7 +146,7 @@ Use **two separate Vercel projects** from the same GitHub repo.
 
 - **Root directory:** `.` (repo root)
 - **Framework:** Other (Python via `api/index.py` + root `vercel.json`)
-- **Env vars:** `OPENAI_API_KEY`, `OPENAI_MODEL`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO`, `TAVILY_API_KEY`
+- **Env vars:** `OPENAI_API_KEY`, `OPENAI_MODEL`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO`, `TAVILY_API_KEY`, `DEV_PANEL_SECRET`
 - **Verify:** `https://<api-domain>/healthz`
 
 Example production API: `https://professional-ai-representative-api.vercel.app`
@@ -147,7 +155,7 @@ Example production API: `https://professional-ai-representative-api.vercel.app`
 
 - **Root directory:** `frontend`
 - **Framework:** Next.js
-- **Env vars:** `NEXT_PUBLIC_API_URL=https://<api-domain-from-step-1>`
+- **Env vars:** `NEXT_PUBLIC_API_URL=https://<api-domain-from-step-1>`; optional `NEXT_PUBLIC_PRODUCTION_API_URL`, `NEXT_PUBLIC_PRODUCTION_FRONTEND_URL` for `/dev` health tiles
 - **Verify:** `https://<frontend-domain>/chat`
 
 Example production frontend: `https://professional-ai-representative.vercel.app`

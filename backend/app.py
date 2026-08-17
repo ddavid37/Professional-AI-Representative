@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,6 +22,7 @@ from .agent import (
     initial_state_from_user_message,
     state_from_chat_history,
 )
+from .dev_panel import dev_panel_payload, require_dev_panel_secret
 from .knowledge_audit import read_recent_events, reload_knowledge_audit
 from .whatsapp import send_lead_notification, send_test_message
 
@@ -144,7 +145,7 @@ async def healthz() -> Dict[str, str]:
 
 
 @app.get("/api/knowledge/audit", tags=["meta"])
-async def knowledge_audit_status() -> Dict[str, Any]:
+async def knowledge_audit_status(_: None = Depends(require_dev_panel_secret)) -> Dict[str, Any]:
     knowledge_dir = PROJECT_ROOT / "knowledge"
     state_path = knowledge_dir / ".audit" / "state.json"
     state: Dict[str, Any] = {}
@@ -159,8 +160,13 @@ async def knowledge_audit_status() -> Dict[str, Any]:
     }
 
 
+@app.get("/api/dev/status", tags=["meta"])
+async def dev_panel_status(_: None = Depends(require_dev_panel_secret)) -> Dict[str, Any]:
+    return dev_panel_payload(PROJECT_ROOT / "knowledge")
+
+
 @app.post("/api/knowledge/reload", tags=["meta"])
-async def knowledge_reload() -> Dict[str, Any]:
+async def knowledge_reload(_: None = Depends(require_dev_panel_secret)) -> Dict[str, Any]:
     knowledge_dir = PROJECT_ROOT / "knowledge"
     summary = reload_knowledge_audit(knowledge_dir)
     return {"status": "reloaded", "summary": summary}
