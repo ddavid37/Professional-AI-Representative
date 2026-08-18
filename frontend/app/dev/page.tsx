@@ -11,10 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-import {
-  countSecretStatus,
-  normalizeEnvVars,
-} from "../../lib/dev-panel-env";
+import { normalizeEnvVars } from "../../lib/dev-panel-env";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const SECRET_STORAGE_KEY = "dev_panel_secret";
@@ -369,7 +366,6 @@ export default function DevPanelPage() {
 
   const vercelEnvVars = data?.env_vars.vercel_api ?? [];
   const localOnlyEnvVars = data?.env_vars.local_only ?? [];
-  const secretStatus = data ? countSecretStatus(data.env_vars) : null;
 
   const showUnlock = authError === "Invalid or missing dev panel secret." && !data;
 
@@ -488,32 +484,6 @@ export default function DevPanelPage() {
             </p>
           )}
         </div>
-
-        {data && (
-          <div className="mb-6 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-border bg-surface/60 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-text-muted">Panel lock</p>
-              <p className="mt-1 text-sm text-text-primary">
-                {data.dev_panel_secret_required ? "Protected" : "Open (optional locally)"}
-              </p>
-            </div>
-            <div className="rounded-lg border border-border bg-surface/60 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-text-muted">Secrets on Vercel API</p>
-              <p className="mt-1 text-sm text-text-primary">{secretStatus?.onVercel ?? 0} sensitive keys</p>
-            </div>
-            <div className="rounded-lg border border-border bg-surface/60 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-text-muted">Local .env</p>
-              <p className="mt-1 text-sm text-text-primary">
-                {secretStatus ? `${secretStatus.configuredLocal} configured` : "—"}
-              </p>
-              {secretStatus && secretStatus.missingLocal.length > 0 && (
-                <p className="mt-1 text-xs text-red-400">
-                  Missing: {secretStatus.missingLocal.join(", ")}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
 
         <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-muted">
           Vercel API project

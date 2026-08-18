@@ -1,11 +1,5 @@
 <!-- linkedin-about:start -->
-My technical journey has evolved from the foundations of Machine Learning and Deep Learning into the current frontier of agents and AI Engineering.
-
-I recently graduated from Columbia University with a B.A. in Computer Science (May 2026). Previously, I worked at Rhino Federated Computing as a Machine Learning Engineer (FDE) on the Customer Success Team. The focus was Federated Learning (FL), where we built production distributed systems that allow models to be trained on siloed data for different clients, which creates a huge impact in regulated fields.
-
-This professional background was an opportunity to learn from brilliant and experienced minds on how to build solutions to industry standards, which gave me a unique advantage back on campus. I was selected as the Course Assistant to launch the first-ever graduate-level Machine Learning Security course at Columbia.
-
-Today, I'm focused on finding my next full-time opportunity in ML engineering and applied AI, while prioritizing reliability, security, and meaningful impact in this fast-moving field.
+CS graduate from Columbia University. I previously worked at Rhino Federated Computing as a Machine Learning Engineer (FDE) in the Customer Success Team. The focus is Federated Learning (FL), where we built distributed systems that allow models to be trained on siloed data for different clients in highly regulated fields - mostly healthcare. On campus, I was selected as a Course Assistant to launch the first ML/AI Security course at Columbia.
 <!-- linkedin-about:end -->
 
 <!-- local-only: career preferences not present on LinkedIn About. Not overwritten by LinkedIn bio sync. -->

@@ -91,6 +91,14 @@ const LOCAL_ONLY_NAMES = new Set([
   "LINKEDIN_BIO_EXPORT_URL",
 ]);
 
+const HIDDEN_LOCAL_ONLY_NAMES = new Set(["OPENAI_MODEL", "DEV_PANEL_SECRET"]);
+
+function visibleLocalOnly(rows: LocalOnlyEnvVar[]): LocalOnlyEnvVar[] {
+  return rows.filter(
+    (row) => LOCAL_ONLY_NAMES.has(row.name) && !HIDDEN_LOCAL_ONLY_NAMES.has(row.name),
+  );
+}
+
 type LegacyEnvVar = {
   name: string;
   group: string;
@@ -101,7 +109,11 @@ type LegacyEnvVar = {
 
 export function normalizeEnvVars(raw: unknown): EnvVarsPayload {
   if (raw && typeof raw === "object" && "vercel_api" in raw) {
-    return raw as EnvVarsPayload;
+    const payload = raw as EnvVarsPayload;
+    return {
+      ...payload,
+      local_only: visibleLocalOnly(payload.local_only ?? []),
+    };
   }
 
   const flat: LegacyEnvVar[] = Array.isArray(raw) ? raw : [];
@@ -117,29 +129,16 @@ export function normalizeEnvVars(raw: unknown): EnvVarsPayload {
       ...spec,
       configured_local: localConfigured(spec.name),
     })),
-    local_only: flat
-      .filter((v) => LOCAL_ONLY_NAMES.has(v.name))
-      .map((v) => ({
-        name: v.name,
-        group: v.group,
-        required: v.required ?? false,
-        configured_local: localConfigured(v.name),
-      })),
+    local_only: visibleLocalOnly(
+      flat
+        .filter((v) => LOCAL_ONLY_NAMES.has(v.name))
+        .map((v) => ({
+          name: v.name,
+          group: v.group,
+          required: v.required ?? false,
+          configured_local: localConfigured(v.name),
+        })),
+    ),
     vercel_catalog_updated: "2026-08-17",
-  };
-}
-
-export function countSecretStatus(env: EnvVarsPayload): {
-  onVercel: number;
-  configuredLocal: number;
-  missingLocal: string[];
-} {
-  const sensitive = env.vercel_api.filter((v) => v.sensitive);
-  const missingLocal = sensitive.filter((v) => !v.configured_local).map((v) => v.name);
-
-  return {
-    onVercel: sensitive.length,
-    configuredLocal: sensitive.filter((v) => v.configured_local).length,
-    missingLocal,
   };
 }
