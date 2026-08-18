@@ -66,6 +66,35 @@ type DevPanelData = {
     events: AuditEvent[];
   };
   dev_panel_secret_required: boolean;
+  linkedin_bio?: LinkedInBioStatus;
+};
+
+type LinkedInBioStatus = {
+  id: string;
+  type: string;
+  path: string;
+  identity: string;
+  status: string;
+  version?: number;
+  content_hash?: string;
+  last_synced_at?: string;
+  last_changed_at?: string;
+  profile_url?: string;
+  source_mode?: string;
+};
+
+type LinkedInSyncResponse = {
+  ok: boolean;
+  result: string;
+  trigger: string;
+  previous_version?: number;
+  new_version?: number;
+  change_summary?: string;
+  message?: string;
+  error_category?: string;
+  agent_reloaded?: boolean;
+  last_synced_at?: string;
+  linkedin_bio?: LinkedInBioStatus;
 };
 
 function formatBytes(n: number): string {
@@ -91,6 +120,38 @@ function formatVercelDate(iso: string, action: string): string {
   const d = new Date(`${iso}T00:00:00`);
   const label = d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   return `${action} ${label}`;
+}
+
+function linkedinStatusFromPanel(data: DevPanelData | null): LinkedInBioStatus | undefined {
+  if (data?.linkedin_bio?.identity) return data.linkedin_bio;
+  const src = data?.knowledge.sources_current.find((s) => s.identity === "LinkedIn_Bio.md");
+  if (!src) return undefined;
+  return {
+    id: "linkedin_bio",
+    type: "linkedin",
+    path: "knowledge/LinkedIn_Bio.md",
+    identity: src.identity,
+    status: src.status,
+    version: src.version,
+    content_hash: src.content_hash,
+    last_changed_at: src.audited_at ?? src.updated_at,
+  };
+}
+
+function formatLinkedInSyncError(sync: LinkedInSyncResponse): string {
+  if (sync.error_category === "provider_not_configured") {
+    return "No authorized About/Bio export is configured yet, so nothing was fetched. The current knowledge file was not changed.";
+  }
+  if (sync.error_category === "linkedin_host_blocked") {
+    return "LinkedIn pages are not fetched directly. Use a file or export URL you control.";
+  }
+  if (sync.error_category === "empty_bio") {
+    return "The export was empty, so the current knowledge file was kept.";
+  }
+  if (sync.error_category === "knowledge_not_writable") {
+    return "The knowledge file could not be written (read-only environment). Current knowledge was kept.";
+  }
+  return sync.message || "Sync failed. Current knowledge was kept.";
 }
 
 function ConfiguredBadge({ configured }: { configured: boolean }) {
@@ -159,6 +220,8 @@ export default function DevPanelPage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadBusy, setReloadBusy] = useState(false);
+  const [linkedinBusy, setLinkedinBusy] = useState(false);
+  const [linkedinSync, setLinkedinSync] = useState<LinkedInSyncResponse | null>(null);
   const [data, setData] = useState<DevPanelData | null>(null);
   const [health, setHealth] = useState<Record<string, { status: HealthStatus; ms?: number }>>({});
   const [healthTargets, setHealthTargets] = useState<HealthTarget[]>([]);
@@ -274,10 +337,39 @@ export default function DevPanelPage() {
     }
   };
 
+  const handleLinkedInSync = async () => {
+    setLinkedinBusy(true);
+    setLinkedinSync(null);
+    try {
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (secret) headers["X-Dev-Panel-Secret"] = secret;
+      const res = await fetch(`${API_BASE}/internal/knowledge/sync/linkedin-bio`, {
+        method: "POST",
+        headers,
+        cache: "no-store",
+      });
+      if (res.status === 401) {
+        setAuthError("Invalid or missing dev panel secret.");
+        return;
+      }
+      const payload = (await res.json()) as LinkedInSyncResponse;
+      setLinkedinSync(payload);
+      await fetchPanel(secret);
+    } catch (err) {
+      setLinkedinSync({
+        ok: false,
+        result: "failed",
+        trigger: "manual",
+        message: err instanceof Error ? err.message : "Sync request failed",
+      });
+    } finally {
+      setLinkedinBusy(false);
+    }
+  };
+
   const vercelEnvVars = data?.env_vars.vercel_api ?? [];
   const localOnlyEnvVars = data?.env_vars.local_only ?? [];
   const secretStatus = data ? countSecretStatus(data.env_vars) : null;
-  const devPanelSecretLocal = localOnlyEnvVars.find((v) => v.name === "DEV_PANEL_SECRET");
 
   const showUnlock = authError === "Invalid or missing dev panel secret." && !data;
 
@@ -402,12 +494,8 @@ export default function DevPanelPage() {
             <div className="rounded-lg border border-border bg-surface/60 px-4 py-3">
               <p className="text-xs uppercase tracking-wide text-text-muted">Panel lock</p>
               <p className="mt-1 text-sm text-text-primary">
-                {data.dev_panel_secret_required ? "Protected (DEV_PANEL_SECRET set on API)" : "Open (no DEV_PANEL_SECRET on API)"}
+                {data.dev_panel_secret_required ? "Protected" : "Open (optional locally)"}
               </p>
-              <div className="mt-2">
-                <ConfiguredBadge configured={Boolean(devPanelSecretLocal?.configured_local)} />
-                <span className="ml-2 text-xs text-text-secondary">DEV_PANEL_SECRET in local .env</span>
-              </div>
             </div>
             <div className="rounded-lg border border-border bg-surface/60 px-4 py-3">
               <p className="text-xs uppercase tracking-wide text-text-muted">Secrets on Vercel API</p>
@@ -503,7 +591,7 @@ export default function DevPanelPage() {
                       <td className="px-4 py-2.5 font-mono text-xs text-text-primary">{row.name}</td>
                       <td className="px-4 py-2.5 text-text-secondary">{row.group}</td>
                       <td className="px-4 py-2.5 text-xs text-text-secondary">
-                        {row.name === "DEV_PANEL_SECRET" ? "Yes" : "No"}
+                        {row.name === "CRON_SECRET" ? "Yes" : "No"}
                       </td>
                       <td className="px-4 py-2.5 text-text-secondary">{row.required ? "Yes" : "No"}</td>
                       <td className="px-4 py-2.5">
@@ -516,6 +604,104 @@ export default function DevPanelPage() {
             </div>
           </div>
         )}
+      </section>
+
+      {/* LinkedIn Bio sync */}
+      <section className="mb-10">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-medium uppercase tracking-wider text-text-muted">
+              LinkedIn Bio
+            </h2>
+            <p className="mt-1 text-xs text-text-secondary">
+              Syncs About/Bio only into <span className="font-mono">knowledge/LinkedIn_Bio.md</span>.
+              Does not scrape LinkedIn.com.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleLinkedInSync()}
+            disabled={linkedinBusy || !data}
+            className="rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary hover:border-accent/50 disabled:opacity-50"
+          >
+            {linkedinBusy ? "Syncing…" : "Sync LinkedIn Bio"}
+          </button>
+        </div>
+        <div className="rounded-lg border border-border bg-surface/60 px-4 py-4">
+          {(() => {
+            const bio = linkedinStatusFromPanel(data);
+            return (
+              <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-text-muted">Status</dt>
+                  <dd className="text-text-primary">{bio?.status ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-text-muted">Knowledge version</dt>
+                  <dd className="text-text-primary">{bio?.version != null ? `v${bio.version}` : "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-text-muted">Last synced</dt>
+                  <dd className="text-text-secondary">
+                    {bio?.last_synced_at ? formatPanelTimestamp(bio.last_synced_at) : "Never"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-text-muted">Last changed</dt>
+                  <dd className="text-text-secondary">
+                    {bio?.last_changed_at ? formatPanelTimestamp(bio.last_changed_at) : "—"}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs uppercase tracking-wide text-text-muted">Content hash</dt>
+                  <dd className="font-mono text-xs text-text-muted" title={bio?.content_hash}>
+                    {bio?.content_hash ? shortHash(bio.content_hash) : "—"}
+                  </dd>
+                </div>
+              </dl>
+            );
+          })()}
+          {linkedinSync && (
+            <div
+              className={`mt-4 rounded-md border px-3 py-3 text-sm ${
+                linkedinSync.ok
+                  ? "border-accent/40 bg-accent-muted text-text-primary"
+                  : "border-red-500/30 bg-red-500/10 text-red-300"
+              }`}
+            >
+              {linkedinSync.ok && linkedinSync.result === "unchanged" && (
+                <>
+                  <p>Sync completed. No changes detected.</p>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Current version: {linkedinSync.new_version != null ? `v${linkedinSync.new_version}` : "—"}
+                  </p>
+                </>
+              )}
+              {linkedinSync.ok && linkedinSync.result === "updated" && (
+                <>
+                  <p>Bio updated.</p>
+                  <p className="mt-1 text-xs text-text-secondary">
+                    Previous version: v{linkedinSync.previous_version} → New version: v{linkedinSync.new_version}
+                  </p>
+                  {linkedinSync.change_summary && (
+                    <p className="mt-1 text-xs text-text-secondary">Changes: {linkedinSync.change_summary}</p>
+                  )}
+                  <p className="mt-1 text-xs text-text-secondary">
+                    {linkedinSync.agent_reloaded
+                      ? "Agent knowledge reloaded successfully."
+                      : "Knowledge file updated; agent reload was not confirmed."}
+                  </p>
+                </>
+              )}
+              {!linkedinSync.ok && (
+                <>
+                  <p>Sync failed. Current knowledge was kept.</p>
+                  <p className="mt-1 text-xs text-red-200/90">{formatLinkedInSyncError(linkedinSync)}</p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </section>
 
       {/* Knowledge sources */}

@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import Header, HTTPException
 
 from .knowledge_audit import read_all_events
+from .linkedin_bio_sync import linkedin_bio_status
 
 
 # Snapshot of the Vercel API project env vars (names/dates only — update when Vercel changes).
@@ -74,8 +75,11 @@ VERCEL_API_ENV_CATALOG: List[Dict[str, Any]] = [
 ]
 
 LOCAL_ONLY_ENV_VARS: List[Dict[str, Any]] = [
-    {"name": "OPENAI_MODEL", "required": False, "group": "OpenAI"},
-    {"name": "DEV_PANEL_SECRET", "required": False, "group": "Dev panel"},
+    {"name": "CRON_SECRET", "required": False, "group": "Scheduler"},
+    {"name": "LINKEDIN_PROFILE_URL", "required": False, "group": "LinkedIn"},
+    {"name": "LINKEDIN_BIO_SOURCE", "required": False, "group": "LinkedIn"},
+    {"name": "LINKEDIN_BIO_FILE", "required": False, "group": "LinkedIn"},
+    {"name": "LINKEDIN_BIO_EXPORT_URL", "required": False, "group": "LinkedIn"},
 ]
 
 
@@ -125,6 +129,55 @@ def require_dev_panel_secret(
         raise HTTPException(status_code=401, detail="Invalid or missing dev panel secret")
 
 
+def _bearer_token(authorization: Optional[str]) -> Optional[str]:
+    if not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        return None
+    return token.strip()
+
+
+def sync_credentials_allowed(
+    x_dev_panel_secret: Optional[str],
+    authorization: Optional[str],
+    *,
+    panel_secret: Optional[str] = None,
+    cron_secret: Optional[str] = None,
+    vercel: bool = False,
+) -> bool:
+    panel = (panel_secret if panel_secret is not None else os.getenv("DEV_PANEL_SECRET") or "").strip()
+    cron = (cron_secret if cron_secret is not None else os.getenv("CRON_SECRET") or "").strip()
+    bearer = _bearer_token(authorization)
+    if cron and bearer == cron:
+        return True
+    if panel and x_dev_panel_secret == panel:
+        return True
+    if not panel and not cron:
+        return not vercel
+    return False
+
+
+def require_internal_sync_auth(
+    x_dev_panel_secret: Optional[str] = Header(None, alias="X-Dev-Panel-Secret"),
+    authorization: Optional[str] = Header(None),
+) -> None:
+    """
+    Protect LinkedIn sync for both the developer panel and the weekly scheduler.
+
+    Accepts either:
+    - X-Dev-Panel-Secret matching DEV_PANEL_SECRET
+    - Authorization: Bearer matching CRON_SECRET (Vercel Cron)
+    """
+    if sync_credentials_allowed(
+        x_dev_panel_secret,
+        authorization,
+        vercel=bool(os.getenv("VERCEL")),
+    ):
+        return
+    raise HTTPException(status_code=401, detail="Invalid or missing sync credentials")
+
+
 def dev_panel_payload(knowledge_dir) -> Dict[str, Any]:
     from pathlib import Path
 
@@ -154,4 +207,5 @@ def dev_panel_payload(knowledge_dir) -> Dict[str, Any]:
             "events": read_all_events(knowledge_dir),
         },
         "dev_panel_secret_required": bool(os.getenv("DEV_PANEL_SECRET")),
+        "linkedin_bio": linkedin_bio_status(knowledge_dir),
     }

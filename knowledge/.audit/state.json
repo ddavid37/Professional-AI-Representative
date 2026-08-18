@@ -1,6 +1,6 @@
 {
-  "git_commit": "667c0d12bc407f41919316f92ff2b5a9b0f1ffd0",
-  "last_sync": "2026-08-18T12:35:29.718772+00:00",
+  "git_commit": "9094daabef5f6c023c2446ccf056cd329dfb5915",
+  "last_sync": "2026-08-18T14:03:17.422791+00:00",
   "sources": {
     "Daniel_David_Resume.pdf": {
       "byte_size": 173883,
@@ -11,17 +11,13 @@
       "version": 1
     },
     "LinkedIn_Bio.md": {
-      "audited_at": "2026-08-17T22:41:08.235248+00:00",
-      "byte_size": 1395,
-      "content_hash": "sha256:a9d55681a89c0cff9c203574024519ae2e9d58bc57f088374acfc6cfff9684f0",
-      "file_modified_at": "2026-06-05T17:31:07.536807+00:00",
-      "git_added_at": "2026-06-05T13:24:43-04:00",
-      "git_last_commit": "e766f3ff5bc27728c07f2a7d3f52bb05b558887c",
-      "git_last_committed_at": "2026-06-05T13:31:59-04:00",
+      "byte_size": 2287,
+      "content_hash": "sha256:ad406b87eb8a5394186f687fc5db3e722aec481d042aed1736cb2705f7614538",
       "identity": "LinkedIn_Bio.md",
+      "previous_hash": "sha256:212e4a2f4f02dc457df3f2cdf45fd26a8a2398e1ee494435d45d20ab37e36581",
       "status": "current",
-      "updated_at": "2026-08-17T22:41:08.235248+00:00",
-      "version": 1
+      "updated_at": "2026-08-18T14:03:17.418060+00:00",
+      "version": 3
     },
     "Protfolio - Daniel David.pdf": {
       "audited_at": "2026-08-17T22:41:08.235857+00:00",
@@ -37,17 +33,13 @@
       "version": 1
     },
     "response-guidelines.md": {
-      "audited_at": "2026-08-17T22:41:08.236332+00:00",
-      "byte_size": 2598,
-      "content_hash": "sha256:b41efd8361fba06085f72df88645afbdc23883b0977d221763209e894989c32b",
-      "file_modified_at": "2026-08-12T13:16:23.611838+00:00",
-      "git_added_at": "2026-04-23T12:37:19-04:00",
-      "git_last_commit": "7d26c6675bc912d211376c2c2557924a5989f2e4",
-      "git_last_committed_at": "2026-08-17T18:32:02-04:00",
+      "byte_size": 2563,
+      "content_hash": "sha256:cc8cc873b9752070bdd2b53a66ade77fa20d49cd06dcb7d1e9a0b3979b9b8668",
       "identity": "response-guidelines.md",
+      "previous_hash": "sha256:b41efd8361fba06085f72df88645afbdc23883b0977d221763209e894989c32b",
       "status": "current",
-      "updated_at": "2026-08-17T22:41:08.236332+00:00",
-      "version": 1
+      "updated_at": "2026-08-18T14:03:17.422015+00:00",
+      "version": 2
     }
   }
 }

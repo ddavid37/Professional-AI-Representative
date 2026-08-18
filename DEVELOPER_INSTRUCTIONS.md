@@ -117,6 +117,31 @@ Unlisted UI at `http://localhost:3000/dev` (not in public nav). Shows env var na
 - Optional on **frontend** for Vercel health tiles: `NEXT_PUBLIC_PRODUCTION_API_URL`, `NEXT_PUBLIC_PRODUCTION_FRONTEND_URL`.
 - Unlock once per browser session; secret is sent as `X-Dev-Panel-Secret` header.
 
+### LinkedIn About/Bio sync
+
+The agent trusts `knowledge/LinkedIn_Bio.md`. A sync job can update **only the LinkedIn About/Bio section** (the `<!-- linkedin-about -->` region). Local career-preference notes after that region are not overwritten.
+
+**This project does not scrape LinkedIn.** There is no authorized public About API. Set an export you control:
+
+| Env | Purpose |
+|-----|---------|
+| `LINKEDIN_PROFILE_URL` | Profile URL (metadata only, never fetched) |
+| `LINKEDIN_BIO_SOURCE` | `file`, `url`, or `mock` |
+| `LINKEDIN_BIO_FILE` | Path to a text export of the About section (`source=file`) |
+| `LINKEDIN_BIO_EXPORT_URL` | HTTPS URL you control returning plain text or `{"bio":"..."}` (`source=url`). LinkedIn hosts are rejected. |
+| `CRON_SECRET` | Bearer token for the weekly job (Vercel Cron) |
+
+Manual trigger: **Sync LinkedIn Bio** on `/dev` → `POST /internal/knowledge/sync/linkedin-bio` (same `X-Dev-Panel-Secret`).
+
+Weekly scheduler: Vercel Cron `GET /internal/knowledge/sync/linkedin-bio` **Mondays at 09:00 EST (14:00 UTC)** with `Authorization: Bearer $CRON_SECRET`. Same `sync_linkedin_bio()` function as the button.
+
+On Vercel, the deployment filesystem is typically **read-only**. A detected change cannot be persisted there; the sync will fail with `knowledge_not_writable` and **keep current knowledge**. Apply updates on a writable checkout, review, then commit.
+
+```bash
+# from repo root
+python -m unittest tests.test_linkedin_bio_sync
+```
+
 ---
 
 ## 6) Troubleshooting
@@ -146,7 +171,7 @@ Use **two separate Vercel projects** from the same GitHub repo.
 
 - **Root directory:** `.` (repo root)
 - **Framework:** Other (Python via `api/index.py` + root `vercel.json`)
-- **Env vars:** `OPENAI_API_KEY`, `OPENAI_MODEL`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO`, `TAVILY_API_KEY`, `DEV_PANEL_SECRET`
+- **Env vars:** `OPENAI_API_KEY`, `OPENAI_MODEL`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO`, `TAVILY_API_KEY`, `DEV_PANEL_SECRET`, `CRON_SECRET`, `LINKEDIN_PROFILE_URL`, `LINKEDIN_BIO_SOURCE` (+ `LINKEDIN_BIO_FILE` or `LINKEDIN_BIO_EXPORT_URL`)
 - **Verify:** `https://<api-domain>/healthz`
 
 Example production API: `https://professional-ai-representative-api.vercel.app`

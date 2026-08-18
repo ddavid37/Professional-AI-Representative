@@ -83,7 +83,13 @@ const VERCEL_API_CATALOG: Omit<VercelEnvVar, "configured_local">[] = [
   },
 ];
 
-const LOCAL_ONLY_NAMES = new Set(["OPENAI_MODEL", "DEV_PANEL_SECRET"]);
+const LOCAL_ONLY_NAMES = new Set([
+  "CRON_SECRET",
+  "LINKEDIN_PROFILE_URL",
+  "LINKEDIN_BIO_SOURCE",
+  "LINKEDIN_BIO_FILE",
+  "LINKEDIN_BIO_EXPORT_URL",
+]);
 
 type LegacyEnvVar = {
   name: string;
@@ -129,14 +135,11 @@ export function countSecretStatus(env: EnvVarsPayload): {
   missingLocal: string[];
 } {
   const sensitive = env.vercel_api.filter((v) => v.sensitive);
-  const devSecret = env.local_only.find((v) => v.name === "DEV_PANEL_SECRET");
-  const allSecrets = devSecret ? [...sensitive, { ...devSecret, sensitive: true }] : sensitive;
-
-  const missingLocal = allSecrets.filter((v) => !v.configured_local).map((v) => v.name);
+  const missingLocal = sensitive.filter((v) => !v.configured_local).map((v) => v.name);
 
   return {
     onVercel: sensitive.length,
-    configuredLocal: allSecrets.filter((v) => v.configured_local).length,
+    configuredLocal: sensitive.filter((v) => v.configured_local).length,
     missingLocal,
   };
 }

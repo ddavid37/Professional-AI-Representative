@@ -196,6 +196,10 @@ Copy `.env.example` to `.env` at the repo root:
 | `TWILIO_WHATSAPP_FROM` | Backend | Twilio sandbox or business sender |
 | `TWILIO_WHATSAPP_TO` | Backend | Daniel's WhatsApp number |
 | `TAVILY_API_KEY` | Backend | Public web search |
+| `DEV_PANEL_SECRET` | Backend | Protects `/dev` APIs |
+| `CRON_SECRET` | Backend | Bearer auth for weekly LinkedIn bio job |
+| `LINKEDIN_PROFILE_URL` | Backend | Profile URL (metadata only; never fetched) |
+| `LINKEDIN_BIO_SOURCE` | Backend | `file`, `url`, or `mock` — not LinkedIn scraping |
 | `NEXT_PUBLIC_API_URL` | Frontend | Backend URL, e.g. `http://localhost:8000` |
 
 Never commit `.env`. Never put secrets in `NEXT_PUBLIC_*`.

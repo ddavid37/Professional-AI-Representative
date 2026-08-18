@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Instrument_Serif } from "next/font/google";
 import "./globals.css";
-import Nav from "./components/Nav";
+import AppChrome from "./components/AppChrome";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -36,8 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`scroll-smooth ${dmSans.variable} ${instrumentSerif.variable}`}>
       <body className="min-h-screen bg-background font-sans text-text-primary antialiased">
-        <Nav />
-        <main className="pt-16">{children}</main>
+        <AppChrome>{children}</AppChrome>
       </body>
     </html>
   );

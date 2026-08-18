@@ -31,8 +31,31 @@ VERSIONS_DIR_NAME = "versions"
 SKIP_NAMES = {"README.MD"}
 
 
-def _utc_now() -> str:
+def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _utc_now() -> str:
+    return utc_now()
+
+
+def hash_normalized_text(text: str) -> str:
+    digest = hashlib.sha256(_normalize_text(text).encode("utf-8")).hexdigest()
+    return f"sha256:{digest}"
+
+
+def append_audit_event(knowledge_dir: Path, event_type: str, payload: Dict[str, Any]) -> None:
+    _append_event(knowledge_dir, event_type, payload)
+
+
+def patch_source_metadata(knowledge_dir: Path, identity: str, extra: Dict[str, Any]) -> None:
+    state = _load_state(knowledge_dir)
+    sources = dict(state.get("sources") or {})
+    current = dict(sources.get(identity) or {})
+    current.update(extra)
+    sources[identity] = current
+    state["sources"] = sources
+    _save_state(knowledge_dir, state)
 
 
 def _audit_root(knowledge_dir: Path) -> Path:

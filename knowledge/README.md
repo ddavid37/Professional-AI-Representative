@@ -12,7 +12,7 @@ Provenance per file (in `/dev`): **Git added** (first commit), **Git last commit
 
 Current files:
 - `Daniel_David_CV_May_2026_Har.pdf` — latest resume/CV
-- `LinkedIn_Bio.md` — professional bio and career preferences
+- `LinkedIn_Bio.md` — LinkedIn About/Bio (synced region) plus local career preferences
 - `Protfolio - Daniel David.pdf` — portfolio
 
 Examples to add:

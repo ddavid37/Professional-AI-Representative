@@ -17,13 +17,18 @@ from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import AIMessage
 from pydantic import BaseModel
 
+from . import agent as agent_module
 from .agent import (
-    GRAPH,
     initial_state_from_user_message,
     state_from_chat_history,
 )
-from .dev_panel import dev_panel_payload, require_dev_panel_secret
+from .dev_panel import (
+    dev_panel_payload,
+    require_dev_panel_secret,
+    require_internal_sync_auth,
+)
 from .knowledge_audit import read_recent_events, reload_knowledge_audit
+from .linkedin_bio_sync import linkedin_bio_status, sync_linkedin_bio
 from .whatsapp import send_lead_notification, send_test_message
 
 
@@ -128,7 +133,7 @@ async def _sse_direct_reply(text: str) -> AsyncGenerator[str, None]:
 async def _sse_event_stream(initial_state: Dict[str, Any]) -> AsyncGenerator[str, None]:
     """Run the full agent (including tool calls), then send the final reply."""
     try:
-        final_state = await GRAPH.ainvoke(initial_state)
+        final_state = await agent_module.GRAPH.ainvoke(initial_state)
         text = _last_ai_text(final_state["messages"])
         if text:
             payload = {"type": "token", "delta": text}
@@ -169,7 +174,36 @@ async def dev_panel_status(_: None = Depends(require_dev_panel_secret)) -> Dict[
 async def knowledge_reload(_: None = Depends(require_dev_panel_secret)) -> Dict[str, Any]:
     knowledge_dir = PROJECT_ROOT / "knowledge"
     summary = reload_knowledge_audit(knowledge_dir)
-    return {"status": "reloaded", "summary": summary}
+    try:
+        agent_module.reload_agent_graph()
+        reloaded = True
+    except Exception:
+        reloaded = False
+    return {"status": "reloaded" if reloaded else "audit_only", "summary": summary}
+
+
+def _run_linkedin_bio_sync(trigger: str) -> Dict[str, Any]:
+    knowledge_dir = PROJECT_ROOT / "knowledge"
+    result = sync_linkedin_bio(
+        knowledge_dir,
+        trigger=trigger,
+        project_root=PROJECT_ROOT,
+        reload_fn=agent_module.reload_agent_graph,
+    )
+    payload = result.as_dict()
+    payload["linkedin_bio"] = linkedin_bio_status(knowledge_dir)
+    return payload
+
+
+@app.post("/internal/knowledge/sync/linkedin-bio", tags=["internal"])
+async def linkedin_bio_sync_post(_: None = Depends(require_internal_sync_auth)) -> Dict[str, Any]:
+    return _run_linkedin_bio_sync("manual")
+
+
+@app.get("/internal/knowledge/sync/linkedin-bio", tags=["internal"])
+async def linkedin_bio_sync_get(_: None = Depends(require_internal_sync_auth)) -> Dict[str, Any]:
+    """Weekly scheduler (Vercel Cron sends GET). Same service as the developer panel POST."""
+    return _run_linkedin_bio_sync("scheduled")
 
 
 @app.post("/api/test/whatsapp", tags=["meta"])
@@ -194,7 +228,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     if direct:
         return ChatResponse(response=direct)
 
-    final_state = GRAPH.invoke(state)
+    final_state = agent_module.GRAPH.invoke(state)
     response = _last_ai_text(final_state["messages"])
     if not response:
         raise HTTPException(status_code=500, detail="Agent did not return a response.")
