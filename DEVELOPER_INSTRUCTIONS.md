@@ -178,7 +178,7 @@ Use **two separate Vercel projects** from the same GitHub repo.
 ### Project 1 — Backend API
 
 - **Root directory:** `.` (repo root)
-- **Framework:** Other (Python via `api/index.py` + root `vercel.json`)
+- **Framework:** FastAPI (Vercel Python; `backend/app.py` + `api/index.py`)
 - **Env vars:** `OPENAI_API_KEY`, `OPENAI_MODEL`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `TWILIO_WHATSAPP_TO`, `TAVILY_API_KEY`, `DEV_PANEL_SECRET`, `CRON_SECRET`, `LINKEDIN_PROFILE_URL`, `LINKEDIN_BIO_SOURCE` (+ `LINKEDIN_BIO_FILE` or `LINKEDIN_BIO_EXPORT_URL`)
 - **Verify:** `https://<api-domain>/healthz`
 
