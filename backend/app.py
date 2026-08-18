@@ -13,7 +13,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from pydantic import BaseModel
 
 from . import agent as agent_module
@@ -30,6 +30,8 @@ from .knowledge_audit import read_recent_events, reload_knowledge_audit
 from .linkedin_bio_sync import linkedin_bio_status, sync_linkedin_bio
 from .smoke_test import run_config_smoke_test
 from .handoff import EMAIL_RE, select_handoff_question
+from .search import search_web as tavily_search
+from .search import format_search_context, should_search_web
 from .whatsapp import send_lead_notification, send_test_message
 
 
@@ -87,6 +89,24 @@ def _last_ai_text(messages: List[Any]) -> str:
 
 def _user_turns(messages: List[ChatMessage]) -> List[str]:
     return [m.content.strip() for m in messages if m.role == "user" and m.content.strip()]
+
+
+def _latest_user_text(request: ChatRequest) -> str:
+    if request.messages:
+        for msg in reversed(request.messages):
+            if msg.role == "user" and msg.content.strip():
+                return msg.content.strip()
+    return (request.message or "").strip()
+
+
+def _with_live_search(state: Dict[str, Any], user_text: str) -> Dict[str, Any]:
+    """Attach Tavily results before the LLM runs, so it cannot skip search."""
+    if not should_search_web(user_text):
+        return state
+    context = format_search_context(tavily_search(user_text))
+    messages = list(state.get("messages") or [])
+    messages.append(SystemMessage(content=context))
+    return {**state, "messages": messages}
 
 
 def _maybe_whatsapp_reply(messages: List[ChatMessage]) -> Optional[str]:
@@ -249,6 +269,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
     if direct:
         return ChatResponse(response=direct)
 
+    state = _with_live_search(state, _latest_user_text(request))
     final_state = agent_module.GRAPH.invoke(state)
     response = _last_ai_text(final_state["messages"])
     if not response:
@@ -270,6 +291,7 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
     if direct:
         return StreamingResponse(_sse_direct_reply(direct), media_type="text/event-stream")
 
+    state = _with_live_search(state, _latest_user_text(request))
     return StreamingResponse(_sse_event_stream(state), media_type="text/event-stream")
 
 

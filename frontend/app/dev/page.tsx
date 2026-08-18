@@ -51,6 +51,14 @@ type KnowledgeSource = {
   stale_at?: string;
 };
 
+type LeadRecord = {
+  timestamp: string;
+  name: string;
+  email: string;
+  question: string;
+  whatsapp: string;
+};
+
 type DevPanelData = {
   env_vars: ReturnType<typeof normalizeEnvVars>;
   knowledge: {
@@ -61,6 +69,10 @@ type DevPanelData = {
     sources_current: KnowledgeSource[];
     sources_stale: KnowledgeSource[];
     events: AuditEvent[];
+  };
+  leads?: {
+    window_days: number;
+    items: LeadRecord[];
   };
   dev_panel_secret_required: boolean;
 };
@@ -731,6 +743,59 @@ export default function DevPanelPage() {
                     </td>
                   </tr>
                 ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Recent leads */}
+      <section className="mt-10">
+        <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-text-muted">
+          Leads (last {data?.leads?.window_days ?? 7} days)
+        </h2>
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead className="border-b border-border bg-surface/80 text-text-muted">
+              <tr>
+                <th className="px-4 py-3 font-medium">Time</th>
+                <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Question</th>
+                <th className="px-4 py-3 font-medium">WhatsApp</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {(data?.leads?.items ?? []).length === 0 && !loading && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-text-muted">
+                    No leads in the last {data?.leads?.window_days ?? 7} days
+                  </td>
+                </tr>
+              )}
+              {(data?.leads?.items ?? []).map((lead, idx) => (
+                <tr key={`${lead.timestamp}-${lead.email}-${idx}`} className="bg-surface/30">
+                  <td className="whitespace-nowrap px-4 py-2.5 text-xs text-text-secondary">
+                    {formatPanelTimestamp(lead.timestamp)}
+                  </td>
+                  <td className="px-4 py-2.5 text-sm text-text-primary">{lead.name || "—"}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-text-secondary">
+                    {lead.email || "—"}
+                  </td>
+                  <td className="max-w-md px-4 py-2.5 text-sm text-text-primary">{lead.question || "—"}</td>
+                  <td className="px-4 py-2.5">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ${
+                        lead.whatsapp === "sent"
+                          ? "bg-accent-muted text-accent"
+                          : "bg-red-500/10 text-red-400"
+                      }`}
+                    >
+                      {lead.whatsapp === "sent" ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                      {lead.whatsapp || "unknown"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

@@ -19,8 +19,11 @@ def _ok_message() -> MagicMock:
 
 
 class WhatsAppSend(unittest.TestCase):
+    @patch("backend.whatsapp.append_lead_record")
     @patch("backend.whatsapp.Client")
-    def test_sandbox_uses_content_template_with_question(self, client_cls: MagicMock):
+    def test_sandbox_uses_content_template_with_question(
+        self, client_cls: MagicMock, _append: MagicMock
+    ):
         client_cls.return_value.messages.create.return_value = _ok_message()
         env = {
             "TWILIO_ACCOUNT_SID": "ACtest",
@@ -45,8 +48,11 @@ class WhatsAppSend(unittest.TestCase):
         self.assertIn("yoni gross", variables["2"])
         self.assertIn("ygross@gmail.com", variables["2"])
 
+    @patch("backend.whatsapp.append_lead_record")
     @patch("backend.whatsapp.Client")
-    def test_non_sandbox_sender_uses_freeform_body(self, client_cls: MagicMock):
+    def test_non_sandbox_sender_uses_freeform_body(
+        self, client_cls: MagicMock, _append: MagicMock
+    ):
         client_cls.return_value.messages.create.return_value = _ok_message()
         env = {
             "TWILIO_ACCOUNT_SID": "ACtest",

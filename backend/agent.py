@@ -29,6 +29,7 @@ from custom.knowledge_loader import (
 )
 from .knowledge_audit import sync_knowledge_audit
 from .search import search_web as tavily_search
+from .search import format_search_context
 from .whatsapp import send_lead_notification
 
 
@@ -53,24 +54,11 @@ def search_web(query: str) -> str:
     """
     Search the public internet for current events, companies, sports, news, or
     other general facts that are not about Daniel's private life.
-    Use this when the answer is not in the knowledge about Daniel.
+    Call this for public/current questions. Never answer those from memory.
+    If search fails, tell the visitor search is unavailable — do not guess.
     """
     result = tavily_search(query)
-    if result.get("status") != "ok":
-        return f"Web search failed: {result.get('message', 'unknown error')}"
-
-    lines: List[str] = []
-    answer = (result.get("answer") or "").strip()
-    if answer:
-        lines.append(f"Summary: {answer}")
-
-    for item in result.get("results") or []:
-        title = item.get("title") or "Source"
-        url = item.get("url") or ""
-        content = item.get("content") or ""
-        lines.append(f"- {title} ({url}): {content}")
-
-    return "\n".join(lines) if lines else "No web results found."
+    return format_search_context(result)
 
 
 @tool
@@ -107,7 +95,10 @@ def _build_system_prompt() -> str:
 
 ## Your rules
 1. If you KNOW the answer from the knowledge above (Daniel's bio, skills, career preferences), answer directly. Do not search the web for facts already in knowledge.
-2. If the question is about **public / current information** (news, companies, sports, definitions, events, people who are not Daniel), call `search_web` and answer from those results. Briefly cite sources when useful.
+2. If the question is about **public / current information** (news, companies, sports, weather, scores, people who are not Daniel):
+   - You MUST use live search results (already attached as an internal message, or by calling `search_web`).
+   - NEVER answer those from training memory (do not say Messi won in 2022 unless the live results say so).
+   - If search failed or returned nothing, say you could not retrieve live results. Do not guess.
 3. If you are NOT sure about **Daniel personally** (family, salary, private info, unconfirmed job offers, etc.), do NOT guess and do NOT search the web for that.
    - Ask for their full name and email.
    - Once you have name, email, AND their question, call `notify_daniel_on_whatsapp`.

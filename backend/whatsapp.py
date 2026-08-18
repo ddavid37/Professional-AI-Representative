@@ -9,6 +9,8 @@ from typing import Any, Dict
 
 from twilio.rest import Client
 
+from .leads import append_lead_record
+
 TWILIO_SANDBOX_FROM = "whatsapp:+14155238886"
 # Public Twilio sandbox sample: "Your appointment is coming up on {{1}} at {{2}}"
 # Free-form `body` is accepted by the API but often never delivered to
@@ -64,10 +66,12 @@ def send_lead_notification(name: str, email: str, question: str) -> Dict[str, An
     auth_token = os.getenv("TWILIO_AUTH_TOKEN")
 
     if not account_sid or not auth_token:
-        return {
+        result = {
             "status": "error",
             "message": "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set (local .env or Vercel env vars on the API project).",
         }
+        append_lead_record(name, email, question, "error")
+        return result
 
     body = _lead_body(name, email, question)
     content_sid = _content_sid()
@@ -88,15 +92,21 @@ def send_lead_notification(name: str, email: str, question: str) -> Dict[str, An
                 to=_whatsapp_to(),
             )
     except Exception as exc:
-        return {"status": "error", "message": str(exc)}
+        result = {"status": "error", "message": str(exc)}
+        append_lead_record(name, email, question, "error")
+        return result
 
     error_code = getattr(message, "error_code", None)
     if error_code:
-        return {
+        result = {
             "status": "error",
             "sid": getattr(message, "sid", None),
             "message": getattr(message, "error_message", None) or str(error_code),
         }
+        append_lead_record(name, email, question, "error")
+        return result
+
+    append_lead_record(name, email, question, "sent")
     return {"status": "sent", "sid": message.sid}
 
 

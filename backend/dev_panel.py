@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import Header, HTTPException
 
 from .knowledge_audit import read_all_events
+from .leads import RECENT_LEAD_DAYS, recent_leads
 from .linkedin_bio_sync import linkedin_bio_status
 
 
@@ -201,4 +202,8 @@ def dev_panel_payload(knowledge_dir) -> Dict[str, Any]:
         },
         "dev_panel_secret_required": bool(os.getenv("DEV_PANEL_SECRET")),
         "linkedin_bio": linkedin_bio_status(knowledge_dir),
+        "leads": {
+            "window_days": RECENT_LEAD_DAYS,
+            "items": recent_leads(),
+        },
     }

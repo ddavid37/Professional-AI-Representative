@@ -27,113 +27,29 @@ Daniel David's professional AI gatekeeper — a Next.js portfolio site with a La
 ### System overview
 
 ```mermaid
-flowchart TB
-    subgraph User["Visitor"]
-        Browser["Browser"]
-    end
-
-    subgraph VercelFE["Vercel — Frontend Project"]
-        NextJS["Next.js 16 + React 19"]
-        Pages["Pages: Home · Chat · Resume · Contact"]
-        ResumeAPI["Route: /api/resume"]
-        LS["localStorage<br/>daniel_ai_chat_history"]
-        Tailwind["Tailwind CSS + Lucide Icons"]
-        Fonts["DM Sans + Instrument Serif"]
-    end
-
-    subgraph VercelAPI["Vercel — API Project"]
-        FastAPI["FastAPI + Uvicorn"]
-        Routes["/healthz · /api/chat · /api/chat/stream"]
-        Handoff["_maybe_whatsapp_reply<br/>(deterministic handoff)"]
-        Agent["LangGraph ReAct Agent"]
-        SearchTool["Tool: search_web"]
-        Tool["Tool: notify_daniel_on_whatsapp"]
-        Loader["knowledge_loader + PyPDF"]
-    end
-
-    subgraph External["External Services"]
-        OpenAI["OpenAI API<br/>gpt-4o-mini"]
-        Tavily["Tavily Search"]
-        Twilio["Twilio WhatsApp"]
-        Daniel["Daniel's phone"]
-    end
-
-    subgraph Data["Knowledge (repo)"]
-        Knowledge["knowledge/<br/>CV · bio · portfolio · FAQs"]
-    end
-
-    Browser --> NextJS
-    NextJS --> Pages
-    NextJS --> ResumeAPI
-    Pages --> LS
-    Pages -->|"SSE stream POST /api/chat/stream"| FastAPI
-    ResumeAPI --> Knowledge
-
-    FastAPI --> Routes
-    Routes --> Handoff
-    Handoff -->|"name + email + prior question"| Twilio
-    Routes --> Agent
+flowchart LR
+    Visitor --> FE[Next.js]
+    FE -->|chat| API[FastAPI]
+    Knowledge[(knowledge/)] --> API
+    API --> Agent[LangGraph]
     Agent --> OpenAI
-    Agent --> SearchTool
-    SearchTool --> Tavily
-    Agent --> Tool
-    Tool --> Twilio
-    Loader --> Knowledge
-    Agent --> Loader
-    Twilio --> Daniel
+    Agent --> Tavily
+    Agent --> WhatsApp[Twilio WhatsApp]
 ```
 
 ### Agent unit + all context sources
 
-How the **LangGraph agent** fits together: where chat memory lives (browser), what context it receives each request (system prompt vs. messages), and when tools run.
+Chat memory lives in the browser. Each request sends the full history. Knowledge is baked into the system prompt at startup — it is not chat memory.
 
 ```mermaid
 flowchart TB
-    subgraph Browser["Browser (memory lives here)"]
-        LS[("localStorage<br/>daniel_ai_chat_history")]
-        ReactState["React state: messages[]"]
-        LS <-->|load / save on every change| ReactState
-    end
-
-    subgraph Request["Each POST /api/chat/stream"]
-        Payload["JSON body:<br/>messages: [{role, content}, ...]"]
-    end
-
-    subgraph Backend["FastAPI — stateless per request"]
-        Convert["state_from_chat_history()"]
-        ChatMsgs["Chat messages for this turn:<br/>HumanMessage + AIMessage list"]
-        Bypass["_maybe_whatsapp_reply()<br/>(regex shortcut — NOT the agent)"]
-    end
-
-    subgraph AgentUnit["LangGraph Agent (GRAPH) — one unit"]
-        direction TB
-        SP["System prompt (fixed at startup)<br/>• Rules<br/>• knowledge/ PDFs & text"]
-        LLM["GPT-4o-mini"]
-        SearchTool["Tool: search_web"]
-        Tool["Tool: notify_daniel_on_whatsapp"]
-        SP --> LLM
-        ChatMsgs --> LLM
-        LLM -->|"public / current facts"| SearchTool
-        SearchTool --> Tavily["Tavily Search"]
-        LLM -->|"if unsure + has name/email/question"| Tool
-        Tool --> Twilio["Twilio WhatsApp → Daniel"]
-        LLM --> Reply["Final assistant reply"]
-    end
-
-    subgraph Knowledge["Daniel facts (NOT chat memory)"]
-        KDir["knowledge/<br/>CV, bio, portfolio..."]
-        KLoader["load_knowledge_dir() + PyPDF"]
-        KDir --> KLoader
-        KLoader -->|"baked into system prompt at startup"| SP
-    end
-
-    ReactState -->|"full history every send"| Payload
-    Payload --> Convert
-    Convert --> ChatMsgs
-    Payload --> Bypass
-    Bypass -->|"email + prior question found"| Twilio
-    Bypass -->|"skip agent"| DirectReply["Direct confirmation reply"]
-    ChatMsgs -->|"if bypass returns null"| AgentUnit
+    Browser[Browser — localStorage history] -->|messages[]| API[FastAPI]
+    Knowledge[(knowledge/)] -->|system prompt| Agent
+    API -->|email + question| WhatsApp[Twilio WhatsApp]
+    API -->|otherwise| Agent[LangGraph + GPT-4o-mini]
+    Agent -->|public facts| Tavily
+    Agent -->|lead| WhatsApp
+    Agent --> Reply
 ```
 
 ### Chat request flow
@@ -141,27 +57,20 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     participant U as Visitor
-    participant FE as Next.js Frontend
-    participant BE as FastAPI Backend
-    participant LG as LangGraph Agent
-    participant OAI as OpenAI
-    participant WA as Twilio WhatsApp
-    participant D as Daniel
+    participant FE as Next.js
+    participant BE as FastAPI
+    participant Agent as Agent + OpenAI
+    participant WA as WhatsApp
 
     U->>FE: Ask question
-    FE->>BE: POST /api/chat/stream + full messages[]
-    BE->>BE: Has email + earlier question?
+    FE->>BE: POST /api/chat/stream
     alt Deterministic handoff
-        BE->>WA: send_lead_notification()
-        WA->>D: WhatsApp message
+        BE->>WA: notify Daniel
         BE->>FE: SSE confirmation
     else Normal chat
-        BE->>LG: ainvoke(state)
-        LG->>OAI: LLM + optional tool call
-        OAI-->>LG: response
-        LG->>WA: notify_daniel_on_whatsapp (if needed)
-        LG-->>BE: final reply
-        BE->>FE: SSE final text
+        BE->>Agent: ainvoke
+        Agent-->>BE: reply
+        BE->>FE: SSE text
     end
     FE->>U: Display reply
 ```
@@ -252,7 +161,7 @@ Verify backend: `curl https://<api-domain>/healthz`
 
 Drop `.txt`, `.md`, or `.pdf` files into `knowledge/` (resume, bio, FAQs). The agent loads them at startup. `knowledge/README.md` and `knowledge/response-guidelines.md` are instructions only — not loaded as persona content.
 
-Current resume: `knowledge/Daniel_David_CV_May_2026_Har.pdf`
+Current resume: `knowledge/Daniel_David_Resume.pdf`
 
 ## Legacy path
 

@@ -11,7 +11,7 @@ Provenance per file (in `/dev`): **Git added** (first commit), **Git last commit
 **Not loaded as persona content:** this README only (`README.md` is skipped).
 
 Current files:
-- `Daniel_David_CV_May_2026_Har.pdf` — latest resume/CV
+- `Daniel_David_Resume.pdf` — latest resume/CV
 - `LinkedIn_Bio.md` — LinkedIn About/Bio (synced region) plus local career preferences
 - `Protfolio - Daniel David.pdf` — portfolio
 

@@ -167,7 +167,7 @@ python -m unittest tests.test_linkedin_bio_sync
 
 - **Wrong backend** — Check `NEXT_PUBLIC_API_URL` points to running backend
 - **Chat loops on lead capture** — Clear `daniel_ai_chat_history` in browser localStorage or use "New chat"
-- **Resume 404** — Ensure `knowledge/Daniel_David_CV_May_2026_Har.pdf` exists
+- **Resume 404** — Ensure `knowledge/Daniel_David_Resume.pdf` exists; `/api/resume` serves that file (proxied on Vercel, not iframed from GitHub)
 
 ---
 
