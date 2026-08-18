@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FileText, Home, Mail, MessageSquare } from "lucide-react";
 
+import ThemeToggle from "./ThemeToggle";
+
 const links = [
   { href: "/",        label: "Home",    icon: Home           },
   { href: "/chat",    label: "Chat",    icon: MessageSquare  },
@@ -24,26 +26,29 @@ export default function Nav() {
           Daniel David
         </Link>
 
-        <ul className="flex items-center gap-1">
-          {links.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || (href !== "/" && pathname.startsWith(href));
-            return (
-              <li key={href}>
-                <Link
-                  href={href}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
-                    active
-                      ? "bg-accent-muted text-accent"
-                      : "text-text-secondary hover:text-text-primary hover:bg-surface"
-                  }`}
-                >
-                  <Icon size={14} strokeWidth={1.75} />
-                  <span className="hidden sm:inline">{label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="flex items-center gap-1">
+          <ul className="flex items-center gap-1">
+            {links.map(({ href, label, icon: Icon }) => {
+              const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
+                      active
+                        ? "bg-accent-muted text-accent"
+                        : "text-text-secondary hover:text-text-primary hover:bg-surface"
+                    }`}
+                  >
+                    <Icon size={14} strokeWidth={1.75} />
+                    <span className="hidden sm:inline">{label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <ThemeToggle />
+        </div>
       </nav>
     </header>
   );

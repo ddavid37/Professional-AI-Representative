@@ -30,7 +30,6 @@ VERCEL_API_ENV_CATALOG: List[Dict[str, Any]] = [
         "environments": ["Production"],
         "last_action": "Added",
         "last_updated": "2026-06-04",
-        "note": "Set on API project today; belongs on the frontend Vercel project.",
     },
     {
         "name": "TWILIO_ACCOUNT_SID",

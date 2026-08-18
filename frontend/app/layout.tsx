@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { DM_Sans, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import AppChrome from "./components/AppChrome";
+import { ThemeProvider } from "./components/ThemeProvider";
+import { THEME_COOKIE } from "../lib/theme";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -28,15 +31,24 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const theme = cookieStore.get(THEME_COOKIE)?.value === "light" ? "light" : "dark";
+
   return (
-    <html lang="en" className={`scroll-smooth ${dmSans.variable} ${instrumentSerif.variable}`}>
+    <html
+      lang="en"
+      className={`scroll-smooth ${dmSans.variable} ${instrumentSerif.variable}${theme === "light" ? " light" : ""}`}
+      suppressHydrationWarning
+    >
       <body className="min-h-screen bg-background font-sans text-text-primary antialiased">
-        <AppChrome>{children}</AppChrome>
+        <ThemeProvider initialTheme={theme}>
+          <AppChrome>{children}</AppChrome>
+        </ThemeProvider>
       </body>
     </html>
   );

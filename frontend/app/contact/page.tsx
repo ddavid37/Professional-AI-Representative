@@ -14,6 +14,7 @@ export default function ContactPage() {
   const [question, setQuestion] = useState("");
   const [status, setStatus]   = useState<FormState>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [submittedEmail, setSubmittedEmail] = useState("");
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -23,20 +24,24 @@ export default function ContactPage() {
     setErrorMsg("");
 
     try {
-      // We call the non-streaming /api/chat endpoint with a pre-formatted lead message.
-      // The LangGraph agent will detect the intent and trigger the LeadCapture tool.
-      const body = JSON.stringify({
-        message: `Please capture this lead — Name: ${name}, Email: ${email}, Question/Message: ${question}`,
-      });
-
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      const res = await fetch(`${API_BASE}/api/contact`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body,
+        body: JSON.stringify({ name, email, question }),
       });
 
-      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+      if (!res.ok) {
+        let detail = `Server responded with ${res.status}`;
+        try {
+          const payload = await res.json();
+          if (typeof payload?.detail === "string") detail = payload.detail;
+        } catch {
+          /* keep status text */
+        }
+        throw new Error(detail);
+      }
 
+      setSubmittedEmail(email);
       setStatus("success");
       setName("");
       setEmail("");
@@ -106,9 +111,11 @@ export default function ContactPage() {
               <CheckCircle size={40} className="text-accent" strokeWidth={1.5} />
               <h2 className="text-xl font-semibold text-text-primary">Message received!</h2>
               <p className="text-sm text-text-secondary max-w-sm">
-                Daniel has been notified and will follow up with you at{" "}
-                <span className="text-text-primary font-medium">{email || "your email"}</span>{" "}
-                shortly.
+                Daniel was notified on WhatsApp and will follow up with you at{" "}
+                <span className="text-text-primary font-medium">
+                  {submittedEmail || "your email"}
+                </span>{" "}
+                shortly. This site does not send email notifications.
               </p>
               <button
                 onClick={() => setStatus("idle")}

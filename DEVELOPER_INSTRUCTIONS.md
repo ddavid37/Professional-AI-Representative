@@ -76,7 +76,14 @@ curl http://localhost:8000/healthz
 # {"status":"ok"}
 ```
 
-Test WhatsApp (optional):
+```bash
+curl -X POST http://localhost:8000/api/dev/smoke \
+  -H "X-Dev-Panel-Secret: $DEV_PANEL_SECRET"
+```
+
+Or use **Run smoke test** on `http://localhost:3000/dev`. This sends a real WhatsApp test message. There is no email path.
+
+Test WhatsApp only (optional):
 
 ```bash
 curl -X POST http://localhost:8000/api/test/whatsapp
@@ -111,8 +118,9 @@ Knowledge changes are tracked in `knowledge/.audit/` (`state.json` + append-only
 
 ### Developer panel (`/dev`)
 
-Unlisted UI at `http://localhost:3000/dev` (not in public nav). Shows env var names (configured/missing), local + Vercel health, knowledge sources, and full audit log.
+Unlisted UI at `http://localhost:3000/dev` (not in public nav). Shows env var names (configured/missing), local + Vercel health, a **configuration smoke test** (OpenAI, Tavily, WhatsApp, knowledge, agent), knowledge sources, and full audit log.
 
+- **Run smoke test** on `/dev` (or `POST /api/dev/smoke`) to verify configs. WhatsApp check sends a real test message to `TWILIO_WHATSAPP_TO`. Production does not send email.
 - Set `DEV_PANEL_SECRET` on the **API** project (required in production).
 - Optional on **frontend** for Vercel health tiles: `NEXT_PUBLIC_PRODUCTION_API_URL`, `NEXT_PUBLIC_PRODUCTION_FRONTEND_URL`.
 - Unlock once per browser session; secret is sent as `X-Dev-Panel-Secret` header.

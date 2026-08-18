@@ -6,7 +6,6 @@ export type VercelEnvVar = {
   last_action: string;
   last_updated: string;
   configured_local: boolean;
-  note?: string;
 };
 
 export type LocalOnlyEnvVar = {
@@ -39,7 +38,6 @@ const VERCEL_API_CATALOG: Omit<VercelEnvVar, "configured_local">[] = [
     environments: ["Production"],
     last_action: "Added",
     last_updated: "2026-06-04",
-    note: "Set on API project today; belongs on the frontend Vercel project.",
   },
   {
     name: "TWILIO_ACCOUNT_SID",

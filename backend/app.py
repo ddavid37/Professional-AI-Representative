@@ -29,6 +29,7 @@ from .dev_panel import (
 )
 from .knowledge_audit import read_recent_events, reload_knowledge_audit
 from .linkedin_bio_sync import linkedin_bio_status, sync_linkedin_bio
+from .smoke_test import run_config_smoke_test
 from .whatsapp import send_lead_notification, send_test_message
 
 
@@ -62,6 +63,12 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     leads: list[Dict[str, Any]] = []
+
+
+class ContactRequest(BaseModel):
+    name: str
+    email: str
+    question: str
 
 
 def _last_ai_text(messages: List[Any]) -> str:
@@ -204,6 +211,28 @@ async def linkedin_bio_sync_post(_: None = Depends(require_internal_sync_auth)) 
 async def linkedin_bio_sync_get(_: None = Depends(require_internal_sync_auth)) -> Dict[str, Any]:
     """Weekly scheduler (Vercel Cron sends GET). Same service as the developer panel POST."""
     return _run_linkedin_bio_sync("scheduled")
+
+
+@app.post("/api/dev/smoke", tags=["meta"])
+async def config_smoke_test(_: None = Depends(require_dev_panel_secret)) -> Dict[str, Any]:
+    """Live configuration smoke test. WhatsApp check sends a real test message."""
+    return run_config_smoke_test(send_whatsapp=True)
+
+
+@app.post("/api/contact", tags=["contact"])
+async def contact_lead(request: ContactRequest) -> Dict[str, Any]:
+    name = request.name.strip()
+    email = request.email.strip()
+    question = request.question.strip()
+    if not name or not EMAIL_RE.search(email) or len(question) < 3:
+        raise HTTPException(status_code=400, detail="Name, a valid email, and a message are required.")
+    result = send_lead_notification(name=name, email=email, question=question)
+    if result.get("status") != "sent":
+        raise HTTPException(
+            status_code=502,
+            detail=result.get("message", "WhatsApp notification failed. There is no email path in production."),
+        )
+    return {"status": "sent", "channel": "whatsapp"}
 
 
 @app.post("/api/test/whatsapp", tags=["meta"])

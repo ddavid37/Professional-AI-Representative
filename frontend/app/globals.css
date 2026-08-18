@@ -4,6 +4,29 @@
 
 :root {
   --font-mono: "Fira Code", "Cascadia Code", "JetBrains Mono", monospace;
+  --color-background: 12 12 14;
+  --color-surface: 20 20 24;
+  --color-border: 37 37 40;
+  --color-accent: 110 168 142;
+  --color-accent-dark: 85 138 114;
+  --color-text-primary: 236 234 228;
+  --color-text-secondary: 154 152 144;
+  --color-text-muted: 92 90 86;
+  --color-accent-muted-alpha: 0.09;
+  color-scheme: dark;
+}
+
+html.light {
+  --color-background: 244 242 236;
+  --color-surface: 255 255 255;
+  --color-border: 221 217 207;
+  --color-accent: 63 122 92;
+  --color-accent-dark: 50 99 75;
+  --color-text-primary: 26 25 22;
+  --color-text-secondary: 90 88 82;
+  --color-text-muted: 140 137 130;
+  --color-accent-muted-alpha: 0.12;
+  color-scheme: light;
 }
 
 html {
@@ -11,11 +34,11 @@ html {
 }
 
 body {
-  background-color: #0c0c0e;
+  background-color: rgb(var(--color-background));
   background-image:
-    radial-gradient(ellipse 90% 60% at 70% -10%, rgba(110, 168, 142, 0.07), transparent),
-    radial-gradient(ellipse 60% 40% at 10% 100%, rgba(110, 168, 142, 0.04), transparent);
-  color: #eceae4;
+    radial-gradient(ellipse 90% 60% at 70% -10%, rgb(var(--color-accent) / 0.07), transparent),
+    radial-gradient(ellipse 60% 40% at 10% 100%, rgb(var(--color-accent) / 0.04), transparent);
+  color: rgb(var(--color-text-primary));
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -29,14 +52,14 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #131316;
+  background: rgb(var(--color-surface));
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2a30;
+  background: rgb(var(--color-border));
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a3a44;
+  background: rgb(var(--color-text-muted));
 }
 
 /* Chat message typing animation */

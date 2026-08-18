@@ -183,6 +183,22 @@ cd frontend && npm install && npm run dev
 
 Open `http://localhost:3000/chat`.
 
+## Configuration smoke test
+
+There is **no email notification** in production. Contact-form and chat leads go to **WhatsApp** via Twilio (`TWILIO_WHATSAPP_TO`).
+
+Run a live check of every project config (env presence + OpenAI, Tavily, WhatsApp send, knowledge, agent):
+
+- **Developer panel:** `http://localhost:3000/dev` → **Run smoke test**. This sends a real WhatsApp test message.
+- **API:** `POST /api/dev/smoke` (same auth as the panel: `X-Dev-Panel-Secret` when `DEV_PANEL_SECRET` is set)
+
+```bash
+curl -X POST http://localhost:8000/api/dev/smoke \
+  -H "X-Dev-Panel-Secret: $DEV_PANEL_SECRET"
+```
+
+Restart the API after backend changes, then run the smoke test before assuming Twilio/OpenAI/Tavily are working.
+
 ## Environment variables
 
 Copy `.env.example` to `.env` at the repo root:
@@ -208,10 +224,11 @@ Never commit `.env`. Never put secrets in `NEXT_PUBLIC_*`.
 
 ```
 backend/
-  app.py          FastAPI routes (/healthz, /api/chat, /api/chat/stream)
+  app.py          FastAPI routes (/healthz, /api/chat, /api/chat/stream, /api/contact, /api/dev/smoke)
   agent.py        LangGraph react agent + WhatsApp + Tavily tools
   whatsapp.py     Twilio send helpers
   search.py       Tavily web search helper
+  smoke_test.py   Live config smoke test (OpenAI, Tavily, WhatsApp, knowledge)
 frontend/
   app/            Next.js pages (home, chat, resume, contact)
   app/api/resume/ Serves CV PDF from knowledge/

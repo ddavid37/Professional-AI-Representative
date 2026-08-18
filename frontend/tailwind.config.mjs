@@ -7,18 +7,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "#0c0c0e",
-        surface: "#141418",
-        border: "#252528",
+        background: "rgb(var(--color-background) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
+        border: "rgb(var(--color-border) / <alpha-value>)",
         accent: {
-          DEFAULT: "#6ea88e",
-          dark: "#558a72",
-          muted: "#6ea88e18",
+          DEFAULT: "rgb(var(--color-accent) / <alpha-value>)",
+          dark: "rgb(var(--color-accent-dark) / <alpha-value>)",
+          muted: "rgb(var(--color-accent) / var(--color-accent-muted-alpha))",
         },
         text: {
-          primary: "#eceae4",
-          secondary: "#9a9890",
-          muted: "#5c5a56",
+          primary: "rgb(var(--color-text-primary) / <alpha-value>)",
+          secondary: "rgb(var(--color-text-secondary) / <alpha-value>)",
+          muted: "rgb(var(--color-text-muted) / <alpha-value>)",
         },
       },
       fontFamily: {
