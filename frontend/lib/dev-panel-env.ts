@@ -81,22 +81,6 @@ const VERCEL_API_CATALOG: Omit<VercelEnvVar, "configured_local">[] = [
   },
 ];
 
-const LOCAL_ONLY_NAMES = new Set([
-  "CRON_SECRET",
-  "LINKEDIN_PROFILE_URL",
-  "LINKEDIN_BIO_SOURCE",
-  "LINKEDIN_BIO_FILE",
-  "LINKEDIN_BIO_EXPORT_URL",
-]);
-
-const HIDDEN_LOCAL_ONLY_NAMES = new Set(["OPENAI_MODEL", "DEV_PANEL_SECRET"]);
-
-function visibleLocalOnly(rows: LocalOnlyEnvVar[]): LocalOnlyEnvVar[] {
-  return rows.filter(
-    (row) => LOCAL_ONLY_NAMES.has(row.name) && !HIDDEN_LOCAL_ONLY_NAMES.has(row.name),
-  );
-}
-
 type LegacyEnvVar = {
   name: string;
   group: string;
@@ -110,7 +94,7 @@ export function normalizeEnvVars(raw: unknown): EnvVarsPayload {
     const payload = raw as EnvVarsPayload;
     return {
       ...payload,
-      local_only: visibleLocalOnly(payload.local_only ?? []),
+      local_only: [],
     };
   }
 
@@ -127,16 +111,7 @@ export function normalizeEnvVars(raw: unknown): EnvVarsPayload {
       ...spec,
       configured_local: localConfigured(spec.name),
     })),
-    local_only: visibleLocalOnly(
-      flat
-        .filter((v) => LOCAL_ONLY_NAMES.has(v.name))
-        .map((v) => ({
-          name: v.name,
-          group: v.group,
-          required: v.required ?? false,
-          configured_local: localConfigured(v.name),
-        })),
-    ),
+    local_only: [],
     vercel_catalog_updated: "2026-08-17",
   };
 }

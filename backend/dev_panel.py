@@ -73,13 +73,7 @@ VERCEL_API_ENV_CATALOG: List[Dict[str, Any]] = [
     },
 ]
 
-LOCAL_ONLY_ENV_VARS: List[Dict[str, Any]] = [
-    {"name": "CRON_SECRET", "required": False, "group": "Scheduler"},
-    {"name": "LINKEDIN_PROFILE_URL", "required": False, "group": "LinkedIn"},
-    {"name": "LINKEDIN_BIO_SOURCE", "required": False, "group": "LinkedIn"},
-    {"name": "LINKEDIN_BIO_FILE", "required": False, "group": "LinkedIn"},
-    {"name": "LINKEDIN_BIO_EXPORT_URL", "required": False, "group": "LinkedIn"},
-]
+LOCAL_ONLY_ENV_VARS: List[Dict[str, Any]] = []
 
 
 def _is_configured(name: str) -> bool:

@@ -324,7 +324,6 @@ export default function DevPanelPage() {
   };
 
   const vercelEnvVars = data?.env_vars.vercel_api ?? [];
-  const localOnlyEnvVars = data?.env_vars.local_only ?? [];
 
   const showUnlock = authError === "Invalid or missing dev panel secret." && !data;
 
@@ -575,42 +574,6 @@ export default function DevPanelPage() {
             </tbody>
           </table>
         </div>
-
-        {localOnlyEnvVars.length > 0 && (
-          <div className="mt-6">
-            <h3 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-muted">
-              Local / not on Vercel API yet
-            </h3>
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[640px] text-left text-sm">
-                <thead className="border-b border-border bg-surface/80 text-text-muted">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Name</th>
-                    <th className="px-4 py-3 font-medium">Group</th>
-                    <th className="px-4 py-3 font-medium">Secret</th>
-                    <th className="px-4 py-3 font-medium">Required locally</th>
-                    <th className="px-4 py-3 font-medium">Local .env</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {localOnlyEnvVars.map((row) => (
-                    <tr key={row.name} className="bg-surface/30">
-                      <td className="px-4 py-2.5 font-mono text-xs text-text-primary">{row.name}</td>
-                      <td className="px-4 py-2.5 text-text-secondary">{row.group}</td>
-                      <td className="px-4 py-2.5 text-xs text-text-secondary">
-                        {row.name === "CRON_SECRET" ? "Yes" : "No"}
-                      </td>
-                      <td className="px-4 py-2.5 text-text-secondary">{row.required ? "Yes" : "No"}</td>
-                      <td className="px-4 py-2.5">
-                        <ConfiguredBadge configured={row.configured_local} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </section>
 
       {/* Knowledge sources */}
