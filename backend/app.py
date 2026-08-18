@@ -5,7 +5,6 @@ FastAPI backend for the Professional AI Representative.
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
@@ -30,13 +29,12 @@ from .dev_panel import (
 from .knowledge_audit import read_recent_events, reload_knowledge_audit
 from .linkedin_bio_sync import linkedin_bio_status, sync_linkedin_bio
 from .smoke_test import run_config_smoke_test
+from .handoff import EMAIL_RE, select_handoff_question
 from .whatsapp import send_lead_notification, send_test_message
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(PROJECT_ROOT / ".env", override=True)
-
-EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
 app = FastAPI(title="Professional AI Representative Backend", version="0.1.0")
 
@@ -109,13 +107,7 @@ def _maybe_whatsapp_reply(messages: List[ChatMessage]) -> Optional[str]:
     email = email_match.group(0)
     name = latest[: email_match.start()].strip(" ,.-") or "Guest"
 
-    question: Optional[str] = None
-    for turn in reversed(turns[:-1]):
-        if EMAIL_RE.search(turn):
-            continue
-        if len(turn) > 10:
-            question = turn
-            break
+    question = select_handoff_question(turns)
     if not question:
         return None
 

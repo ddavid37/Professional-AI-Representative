@@ -159,7 +159,7 @@ python -m unittest tests.test_linkedin_bio_sync
 - **`uvicorn: command not found`** — Activate venv: `source .venv/bin/activate`
 - **`address already in use` on :8000** — `lsof -ti :8000 | xargs kill`
 - **Chat errors / 500** — Check `OPENAI_API_KEY` and OpenAI billing/quota
-- **WhatsApp not sending** — Verify all four `TWILIO_*` vars; test with `/api/test/whatsapp`
+- **WhatsApp not sending** — Verify all four `TWILIO_*` vars and that `TWILIO_ACCOUNT_SID` is the same Twilio account you joined in WhatsApp (`join …`). Sandbox often delivers templates only; free-form chat copy will not appear on WhatsApp. Test with `/api/test/whatsapp`
 - **Web search fails** — Verify `TAVILY_API_KEY` (no spaces around `=`)
 - **Agent gives stale bio** — Restart backend after updating `knowledge/` files
 
