@@ -162,25 +162,41 @@ def _load_state(knowledge_dir: Path) -> Dict[str, Any]:
         return {"sources": {}, "last_sync": None, "git_commit": None}
 
 
+def _try_mkdir(path: Path) -> bool:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        return True
+    except OSError:
+        return False
+
+
 def _save_state(knowledge_dir: Path, state: Dict[str, Any]) -> None:
     root = _audit_root(knowledge_dir)
-    root.mkdir(parents=True, exist_ok=True)
-    _state_path(knowledge_dir).write_text(
-        json.dumps(state, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    if not _try_mkdir(root):
+        return
+    try:
+        _state_path(knowledge_dir).write_text(
+            json.dumps(state, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    except OSError:
+        return
 
 
 def _append_event(knowledge_dir: Path, event_type: str, payload: Dict[str, Any]) -> None:
     root = _audit_root(knowledge_dir)
-    root.mkdir(parents=True, exist_ok=True)
+    if not _try_mkdir(root):
+        return
     record = {
         "type": event_type,
         "timestamp": _utc_now(),
         **payload,
     }
-    with _events_path(knowledge_dir).open("a", encoding="utf-8") as f:
-        f.write(json.dumps(record, sort_keys=True) + "\n")
+    try:
+        with _events_path(knowledge_dir).open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, sort_keys=True) + "\n")
+    except OSError:
+        return
 
 
 def _version_snapshot_path(knowledge_dir: Path, identity: str, version: int, suffix: str) -> Path:
@@ -190,9 +206,13 @@ def _version_snapshot_path(knowledge_dir: Path, identity: str, version: int, suf
 
 def _write_version_snapshot(knowledge_dir: Path, identity: str, version: int, path: Path) -> None:
     versions = _versions_dir(knowledge_dir)
-    versions.mkdir(parents=True, exist_ok=True)
+    if not _try_mkdir(versions):
+        return
     dest = _version_snapshot_path(knowledge_dir, identity, version, path.suffix.lower() or ".bin")
-    dest.write_bytes(path.read_bytes())
+    try:
+        dest.write_bytes(path.read_bytes())
+    except OSError:
+        return
 
 
 def _iter_knowledge_files(knowledge_dir: Path) -> List[Path]:

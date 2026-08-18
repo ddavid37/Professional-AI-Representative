@@ -88,7 +88,11 @@ def notify_daniel_on_whatsapp(name: str, email: str, question: str) -> str:
 def _build_system_prompt() -> str:
     project_dir = get_project_dir()
     knowledge_dir = project_dir / KNOWLEDGE_DIR_NAME
-    sync_knowledge_audit(knowledge_dir)
+    try:
+        sync_knowledge_audit(knowledge_dir)
+    except OSError:
+        # Vercel (and other read-only deploys) cannot persist audit snapshots.
+        pass
     knowledge_text = load_knowledge_dir(knowledge_dir).strip()
     persona_section = knowledge_text if knowledge_text else _DEFAULT_BIO
 
