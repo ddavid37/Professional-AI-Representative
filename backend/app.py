@@ -29,7 +29,7 @@ from .dev_panel import (
 from .knowledge_audit import read_recent_events, reload_knowledge_audit
 from .linkedin_bio_sync import linkedin_bio_status, sync_linkedin_bio
 from .smoke_test import run_config_smoke_test
-from .handoff import EMAIL_RE, select_handoff_question
+from .handoff import EMAIL_RE, scrub_unverified_emails, select_handoff_question
 from .search import search_web as tavily_search
 from .search import format_search_context, should_search_web
 from .whatsapp import send_lead_notification, send_test_message
@@ -109,6 +109,20 @@ def _with_live_search(state: Dict[str, Any], user_text: str) -> Dict[str, Any]:
     return {**state, "messages": messages}
 
 
+def _safe_reply(text: str, state: Dict[str, Any]) -> str:
+    """
+    Strip any email the model made up. Emails from knowledge/, the visitor,
+    or live search / tool results survive; ones only the model wrote do not.
+    """
+    sourced = [
+        e
+        for m in state.get("messages") or []
+        if not isinstance(m, AIMessage) and isinstance(m.content, str)
+        for e in EMAIL_RE.findall(m.content)
+    ]
+    return scrub_unverified_emails(text, [*agent_module.VERIFIED_EMAILS, *sourced])
+
+
 def _maybe_whatsapp_reply(messages: List[ChatMessage]) -> Optional[str]:
     """
     Simple rule: if the latest user message has an email and an earlier user
@@ -153,7 +167,7 @@ async def _sse_event_stream(initial_state: Dict[str, Any]) -> AsyncGenerator[str
     """Run the full agent (including tool calls), then send the final reply."""
     try:
         final_state = await agent_module.GRAPH.ainvoke(initial_state)
-        text = _last_ai_text(final_state["messages"])
+        text = _safe_reply(_last_ai_text(final_state["messages"]), final_state)
         if text:
             payload = {"type": "token", "delta": text}
             yield f"data: {json.dumps(payload)}\n\n"
@@ -271,7 +285,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
 
     state = _with_live_search(state, _latest_user_text(request))
     final_state = agent_module.GRAPH.invoke(state)
-    response = _last_ai_text(final_state["messages"])
+    response = _safe_reply(_last_ai_text(final_state["messages"]), final_state)
     if not response:
         raise HTTPException(status_code=500, detail="Agent did not return a response.")
     return ChatResponse(response=response)

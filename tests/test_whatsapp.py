@@ -7,6 +7,8 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
+from twilio.base.exceptions import TwilioRestException
+
 from backend.whatsapp import DEFAULT_SANDBOX_CONTENT_SID, send_lead_notification
 
 
@@ -68,6 +70,32 @@ class WhatsAppSend(unittest.TestCase):
         kwargs = client_cls.return_value.messages.create.call_args.kwargs
         self.assertNotIn("content_sid", kwargs)
         self.assertIn("New inquiry for Daniel David", kwargs["body"])
+        self.assertIn("hello", kwargs["body"])
+
+    @patch("backend.whatsapp.append_lead_record")
+    @patch("backend.whatsapp.Client")
+    def test_invalid_template_falls_back_to_freeform_body(
+        self, client_cls: MagicMock, _append: MagicMock
+    ):
+        create = client_cls.return_value.messages.create
+        create.side_effect = [
+            TwilioRestException(400, "uri", msg="The ContentSid is Invalid", code=21655),
+            _ok_message(),
+        ]
+        env = {
+            "TWILIO_ACCOUNT_SID": "ACtest",
+            "TWILIO_AUTH_TOKEN": "token",
+            "TWILIO_WHATSAPP_FROM": "whatsapp:+14155238886",
+            "TWILIO_WHATSAPP_TO": "whatsapp:+15555555555",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            os.environ.pop("TWILIO_CONTENT_SID", None)
+            result = send_lead_notification("Ada", "ada@example.com", "hello")
+
+        self.assertEqual(result["status"], "sent")
+        self.assertEqual(create.call_count, 2)
+        kwargs = create.call_args.kwargs
+        self.assertNotIn("content_sid", kwargs)
         self.assertIn("hello", kwargs["body"])
 
 

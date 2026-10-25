@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 from dotenv import load_dotenv
 
@@ -27,6 +27,7 @@ from custom.knowledge_loader import (
     get_project_dir,
     load_knowledge_dir,
 )
+from .handoff import EMAIL_RE
 from .knowledge_audit import sync_knowledge_audit
 from .search import search_web as tavily_search
 from .search import format_search_context
@@ -73,15 +74,17 @@ def notify_daniel_on_whatsapp(name: str, email: str, question: str) -> str:
     return f"Could not reach Daniel on WhatsApp: {result.get('message', 'unknown error')}"
 
 
-def _build_system_prompt() -> str:
-    project_dir = get_project_dir()
-    knowledge_dir = project_dir / KNOWLEDGE_DIR_NAME
+def _load_knowledge_text() -> str:
+    knowledge_dir = get_project_dir() / KNOWLEDGE_DIR_NAME
     try:
         sync_knowledge_audit(knowledge_dir)
     except OSError:
         # Vercel (and other read-only deploys) cannot persist audit snapshots.
         pass
-    knowledge_text = load_knowledge_dir(knowledge_dir).strip()
+    return load_knowledge_dir(knowledge_dir).strip()
+
+
+def _build_system_prompt(knowledge_text: str) -> str:
     persona_section = knowledge_text if knowledge_text else _DEFAULT_BIO
 
     return f"""You are the professional representative for Daniel David.
@@ -108,14 +111,25 @@ def _build_system_prompt() -> str:
 5. After calling the WhatsApp tool, confirm Daniel was notified on WhatsApp.
 6. **Career search:** Daniel does **not** have a named dream company. He has an entrepreneurship mindset and also fully values stable, established companies. If asked where he wants to work or what he is looking for, describe the two tracks in knowledge: (1) early-stage / founding-adjacent, versatile, technical + customer-facing + business-oriented; (2) Series A–B, especially Forward Deployed Engineer (FDE) roles with the same mix. Do not invent a target company.
 7. Do not volunteer career-search detail unprompted unless the chat is about jobs or career goals.
+8. **Contact details:** NEVER invent an email address, phone number, or link for Daniel. Only share contact details that appear word-for-word in the knowledge above. If someone wants to reach Daniel, point them to the Contact page or offer to collect their name and email and notify him on WhatsApp.
+9. **Do not repeat yourself:** offer the WhatsApp handoff at most once unless the visitor asks again. Never end several messages in a row with the same closing line or sign-off; vary it or skip it.
+10. **Recruiters:** if the visitor is a recruiter, from a company, or mentions a role, answer their question and then ask, in the same reply, about the specifics you are missing: the role title, seniority, location (and on-site / hybrid / remote), and the team or company. Ask at most two of these per reply, skip any they already told you, and stop asking once you have them. Include what they shared when you call `notify_daniel_on_whatsapp`.
+11. **Language and gender:** reply in the visitor's language. Daniel is male, so refer to him in masculine forms. Do NOT assume the visitor's gender. In Hebrew, unless the visitor has written about themselves in a gendered form (e.g. "אני מגייסת" → feminine, "אני מגייס" → masculine), address them in plural / neutral forms: write "אם תרצו", "תוכלו להשאיר פרטים", "אשמח לשמוע מכם" — never "אם תרצה", "תוכל", "אתה" by default. When speaking about yourself in Hebrew, prefer neutral phrasing ("קשה לי לומר בוודאות", "אשמח") over gendered adjectives.
 """.strip()
 
 
+# Emails the agent may repeat (from knowledge/). Anything else is scrubbed.
+VERIFIED_EMAILS: Set[str] = set()
+
+
 def build_agent_graph():
+    global VERIFIED_EMAILS
+    knowledge_text = _load_knowledge_text()
+    VERIFIED_EMAILS = set(EMAIL_RE.findall(knowledge_text))
     return create_react_agent(
         _get_chat_model(),
         [search_web, notify_daniel_on_whatsapp],
-        prompt=_build_system_prompt(),
+        prompt=_build_system_prompt(knowledge_text),
     )
 
 

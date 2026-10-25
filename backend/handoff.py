@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from typing import Optional, Sequence
+from typing import Iterable, Optional, Sequence
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
@@ -52,3 +52,20 @@ def select_handoff_question(user_turns: Sequence[str]) -> Optional[str]:
         if len(compact) > 10:
             return compact
     return fallback
+
+
+def scrub_unverified_emails(text: str, allowed: Iterable[str]) -> str:
+    """
+    Replace any email address the model wrote that is not in `allowed`
+    (emails from knowledge/ or typed by the visitor). The model must never
+    invent a contact address for Daniel.
+    """
+    allowed_lower = {a.lower() for a in allowed}
+
+    def _swap(match: "re.Match[str]") -> str:
+        email = match.group(0)
+        if email.lower() in allowed_lower:
+            return email
+        return "[email withheld — use the Contact page or leave your details here]"
+
+    return EMAIL_RE.sub(_swap, text)

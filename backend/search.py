@@ -34,14 +34,34 @@ _WEB_HINTS = re.compile(
 )
 
 
+# Hebrew words take attached prefixes (ה, ב, ו, ל, מ, ש, כ) and suffixes, so
+# English-style \b...\b matching misses them. Match a stem that is not glued
+# to an earlier Hebrew letter other than up to two prefix letters.
+_HE_PREFIX = r"(?<![\u05D0-\u05EA])[ובהלמשכ]{0,2}"
+
+_PERSONAL_SKIP_HE = re.compile(
+    _HE_PREFIX
+    + r"(אח|אחות|אחים|אחיות|משכורת|שכר|משפחה|אמא|אבא|חברה\s+שלו|בת\s+זוג|אישה|"
+    r"פרטי|טלפון|כתובת|הצעה|הצעת)(?![\u05D0-\u05EA])"
+)
+
+_WEB_HINTS_HE = re.compile(
+    _HE_PREFIX
+    + r"(מזג\s+ה?אוויר|תחזית|מניה|מניות|בורסה|נאסד\"?ק|חדשות|"
+    r"תוצאה|תוצאות|ניצח|ניצחה|ניצחו|זכה|זכתה|זכו|מונדיאל|גביע\s+העולם|"
+    r"בחירות|נשיא|ראש\s+הממשלה|עדכני|עדכנית|אחרון|אחרונה|אחרונות|לאחרונה|"
+    r"היום|הערב|השבוע|השנה|מחיר)"
+)
+
+
 def should_search_web(text: str) -> bool:
     """True when this user turn is a public/current question, not a Daniel-personal one."""
     compact = " ".join(text.split())
     if not compact or EMAIL_RE.search(compact):
         return False
-    if _PERSONAL_SKIP.search(compact):
+    if _PERSONAL_SKIP.search(compact) or _PERSONAL_SKIP_HE.search(compact):
         return False
-    return bool(_WEB_HINTS.search(compact))
+    return bool(_WEB_HINTS.search(compact) or _WEB_HINTS_HE.search(compact))
 
 
 def format_search_context(result: Dict[str, Any]) -> str:

@@ -16,6 +16,16 @@ class ShouldSearchWeb(unittest.TestCase):
         self.assertFalse(should_search_web("how many siblings Daniel has?"))
         self.assertFalse(should_search_web("yoni gross ygross@gmail.com"))
 
+    def test_hebrew_public_questions_search(self):
+        self.assertTrue(should_search_web("מי ניצח במונדיאל האחרון?"))
+        self.assertTrue(should_search_web("מה מזג האוויר בתל אביב השבוע?"))
+        self.assertTrue(should_search_web("מה החדשות היום?"))
+
+    def test_hebrew_daniel_questions_do_not_search(self):
+        self.assertFalse(should_search_web("כמה אחים יש לדניאל?"))
+        self.assertFalse(should_search_web("מה המשכורת שדניאל מבקש?"))
+        self.assertFalse(should_search_web("איפה דניאל למד?"))
+
     def test_failed_search_forbids_memory_answers(self):
         text = format_search_context({"status": "error", "message": "bad key"})
         self.assertIn("live web search failed", text)

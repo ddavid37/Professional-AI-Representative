@@ -7,6 +7,7 @@ import json
 import os
 from typing import Any, Dict
 
+from twilio.base.exceptions import TwilioRestException
 from twilio.rest import Client
 
 from .leads import append_lead_record
@@ -17,6 +18,8 @@ TWILIO_SANDBOX_FROM = "whatsapp:+14155238886"
 # international sandbox numbers; this template is what actually arrives.
 DEFAULT_SANDBOX_CONTENT_SID = "HXb5b62575e6e4ff6129ad7c8efe1f983e"
 _MAX_TEMPLATE_VAR = 200
+# Twilio: "The ContentSid is Invalid" (missing, deleted, or another account's).
+_INVALID_CONTENT_SID = 21655
 
 
 def _whatsapp_from() -> str:
@@ -78,14 +81,22 @@ def send_lead_notification(name: str, email: str, question: str) -> Dict[str, An
 
     try:
         client = Client(account_sid, auth_token)
+        message = None
         if content_sid:
-            message = client.messages.create(
-                content_sid=content_sid,
-                content_variables=_template_variables(name, email, question),
-                from_=_whatsapp_from(),
-                to=_whatsapp_to(),
-            )
-        else:
+            try:
+                message = client.messages.create(
+                    content_sid=content_sid,
+                    content_variables=_template_variables(name, email, question),
+                    from_=_whatsapp_from(),
+                    to=_whatsapp_to(),
+                )
+            except TwilioRestException as exc:
+                # A bad template must not lose the lead: fall back to plain text.
+                if exc.code != _INVALID_CONTENT_SID:
+                    raise
+            if message is not None and getattr(message, "error_code", None) == _INVALID_CONTENT_SID:
+                message = None
+        if message is None:
             message = client.messages.create(
                 body=body,
                 from_=_whatsapp_from(),
