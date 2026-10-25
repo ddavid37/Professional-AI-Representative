@@ -161,7 +161,7 @@ Verify backend: `curl https://<api-domain>/healthz`
 
 Drop `.txt`, `.md`, or `.pdf` files into `knowledge/` (resume, bio, FAQs). The agent loads them at startup. `knowledge/README.md` and `knowledge/response-guidelines.md` are instructions only — not loaded as persona content.
 
-Current resume: `knowledge/Daniel_David_Resume.pdf`
+Current resume: `knowledge/Daniel_David_CV_.pdf`
 
 ## Legacy path
 

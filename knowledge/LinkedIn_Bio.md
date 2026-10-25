@@ -1,5 +1,5 @@
 <!-- linkedin-about:start -->
-CS graduate from Columbia University. I previously worked at Rhino Federated Computing as a Machine Learning Engineer (FDE) in the Customer Success Team. The focus is Federated Learning (FL), where we built distributed systems that allow models to be trained on siloed data for different clients in highly regulated fields - mostly healthcare. On campus, I was selected as a Course Assistant to launch the first ML/AI Security course at Columbia.
+Computer Science graduate from Columbia University. I previously worked at Rhino Federated Computing as a Forward Deployed Engineer (FDE). The focus was Federated Learning (FL), where we built distributed systems that allow models to be trained on siloed data for different clients in highly regulated fields. On campus, I was selected as a Teaching Assistant to launch the first ML/AI Security course at Columbia. After years in the US, I’m back in Israel and I’m looking for Forward Deployed, Applied AI and ML Engineering roles, where I can build AI systems and put them in front of real customers.
 <!-- linkedin-about:end -->
 
 <!-- local-only: career preferences not present on LinkedIn About. Not overwritten by LinkedIn bio sync. -->

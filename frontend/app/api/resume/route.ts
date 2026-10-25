@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
-const RESUME_FILE = "Daniel_David_Resume.pdf";
+const RESUME_FILE = "Daniel_David_CV_.pdf";
 const GITHUB_RAW =
-  "https://raw.githubusercontent.com/ddavid37/Professional-AI-Representative/main/knowledge/Daniel_David_Resume.pdf";
+  "https://raw.githubusercontent.com/ddavid37/Professional-AI-Representative/main/knowledge/Daniel_David_CV_.pdf";
 
-function pdfResponse(body: Buffer | Uint8Array) {
-  return new NextResponse(body, {
+function pdfResponse(body: Uint8Array) {
+  // Copy into a plain ArrayBuffer-backed view; Buffer is not a valid BodyInit type.
+  return new NextResponse(new Uint8Array(body), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
