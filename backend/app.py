@@ -5,6 +5,7 @@ FastAPI backend for the Professional AI Representative.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
@@ -17,6 +18,7 @@ from langchain_core.messages import AIMessage, SystemMessage
 from pydantic import BaseModel
 
 from . import agent as agent_module
+from .admin_health import require_admin_token, run_admin_health
 from .agent import (
     initial_state_from_user_message,
     state_from_chat_history,
@@ -179,7 +181,14 @@ async def _sse_event_stream(initial_state: Dict[str, Any]) -> AsyncGenerator[str
 
 @app.get("/healthz", tags=["meta"])
 async def healthz() -> Dict[str, str]:
-    return {"status": "ok"}
+    # The model name is public (shown in the chat header); keys never are.
+    return {"status": "ok", "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"}
+
+
+@app.get("/api/admin/health", tags=["meta"])
+async def admin_health(_: None = Depends(require_admin_token)) -> Dict[str, Any]:
+    """Live connectivity checks for the /admin page. Never returns secret values."""
+    return await run_admin_health()
 
 
 @app.get("/api/knowledge/audit", tags=["meta"])

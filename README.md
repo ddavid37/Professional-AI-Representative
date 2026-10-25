@@ -122,6 +122,7 @@ Copy `.env.example` to `.env` at the repo root:
 | `TWILIO_WHATSAPP_TO` | Backend | Daniel's WhatsApp number |
 | `TAVILY_API_KEY` | Backend | Public web search |
 | `DEV_PANEL_SECRET` | Backend | Protects `/dev` APIs |
+| `ADMIN_TOKEN` | Backend | Enables `/admin` live status (`GET /api/admin/health`, header `X-Admin-Token`); disabled when unset |
 | `CRON_SECRET` | Backend | Bearer auth for weekly LinkedIn bio job |
 | `LINKEDIN_PROFILE_URL` | Backend | Profile URL (metadata only; never fetched) |
 | `LINKEDIN_BIO_SOURCE` | Backend | `file`, `url`, or `mock` — not LinkedIn scraping |

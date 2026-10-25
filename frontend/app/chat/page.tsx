@@ -64,6 +64,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  // Filled from /healthz so the header shows the model production actually runs.
+  const [modelName, setModelName] = useState("gpt-4o-mini");
   const [onlineStatus, setOnlineStatus] = useState<"checking" | "online" | "offline">(
     "checking",
   );
@@ -120,6 +122,10 @@ export default function ChatPage() {
         });
         if (!cancelled) {
           setOnlineStatus(res.ok ? "online" : "offline");
+        }
+        if (res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { model?: string };
+          if (!cancelled && body.model) setModelName(body.model);
         }
       } catch {
         if (!cancelled) setOnlineStatus("offline");
@@ -267,7 +273,7 @@ export default function ChatPage() {
         </div>
         <div>
           <p className="text-sm font-semibold text-text-primary">Daniel's AI Rep</p>
-          <p className="text-xs text-text-secondary">Powered by GPT-4o-mini · OpenAI</p>
+          <p className="text-xs text-text-secondary">Powered by {modelName} · OpenAI</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
           {hasUserMessages && (
